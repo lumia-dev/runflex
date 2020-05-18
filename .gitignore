@@ -1,0 +1,4 @@
+*.mod
+*.o
+runflex/__pycache__/
+*.py[cod]
