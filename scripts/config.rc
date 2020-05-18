@@ -1,0 +1,38 @@
+releases.kindz               : 1
+releases.altitude_correction : 1
+
+path.build          : /scratch/guillaume/flexpart/build/${compiler}
+path.src            : /home/guillaume/dev/packages/runflex/src
+path.scratch.global : /scratch/guillaume/flexpart/
+path.run            : /scratch/guillaume/flexpart/run
+path.logs           : /scratch/guillaume/flexpart/logs
+path.options        : /home/guillaume/Projects/flexpart/options
+path.output         : /home/guillaume/Projects/flexpart/output
+path.meteo          : /home/guillaume/Projects/flexpart/meteo
+path.species        : /home/guillaume/Projects/flexpart/SPECIES
+machine.data        : /proj/inversion/FLEXPART
+
+machine    : ubuntu
+compiler   : gfortran
+
+nreleases.max    : 25
+length           : 3
+ntasks.parallell : 2
+output.responses.period : 10800
+meteo.prefix     : EI
+meteo.interv     : 3
+meteo.archive    : /proj/inversion/FLEXPART/meteo/${meteogrid}
+meteogrid        : ei.eurocom.50x50.ml60.T255.gg
+releases.npart : 10000
+releases.mass  : ${releases.npart}
+species.number  : 1
+species.1.index : 24
+
+landuse.file                              : ${machine.data}/IGBP_int1.dat
+landuse.z0.file                           : ${machine.data}/surfdata.t
+surfdepo.file                             : ${machine.data}/surfdepo.t
+
+run.interactive : F
+
+file.command: /home/guillaume/Projects/flexpart/options/COMMAND
+file.grid:    /home/guillaume/Projects/flexpart/options/OUTGRID

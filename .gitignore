@@ -2,3 +2,4 @@
 *.o
 runflex/__pycache__/
 *.py[cod]
+.vscode/
