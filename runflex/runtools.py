@@ -26,7 +26,7 @@ class Namelists:
         self.lists = []
         if filename is not None :
             for name in names :
-                self.lists = Namelist(name=name, file=file)
+                self.lists = Namelist(name=name, file=filename)
     
     def addList(self, nmlist):
         self.lists.append(nmlist)
@@ -172,7 +172,7 @@ class Observations:
         ctrl.add('SPECNUM_REL', ", ".join([str(s) for s in specs]))
         releases.addList(ctrl)
 
-        for it, obs in enumerate(self.observations.itertuples()):
+        for obs in self.observations.itertuples():
             rl = Namelist('RELEASE')
             rl.add('IDATE1', obs.time.strftime('%Y%m%d'))
             rl.add('ITIME1', obs.time.strftime("%H%M%S"))
@@ -351,7 +351,7 @@ class runFlexpart:
 
         # Wait for the runs to finish
         if not self.rcf.get('run.interactive'):
-            sigterm = [pid.wait() for pid in pids]
+            [pid.wait() for pid in pids]
 
     def submit_sbatch(self, dbf, ichunk):
         logpath = self.rcf.get('path.logs')

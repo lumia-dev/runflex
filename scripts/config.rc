@@ -27,7 +27,7 @@ surfdepo.file       : ${path.inputs}/surfdepo.t
 ! ========================================================================================
 ! FLEXPART build
 path.build          : ${path.scratch_global}/build/${compiler}
-path.src            : ${path.lib}/src
+path.src            : ${path.lib}/flexpart10.4
 machine             : tetralith 
 compiler            : ifort
 
