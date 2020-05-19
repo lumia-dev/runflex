@@ -261,16 +261,8 @@ class runFlexpart:
         """
         tmax = self.observations.time.max()
         tmin = self.observations.time.min()
-        lenmax = self.rcf.get('length')
+        lenmax = self.rcf.get('releases.length')
         tmin = tmin-timedelta(days=lenmax)
-        if self.rcf.get('output.responses.regular', default=True):
-            # If we want regular output, and the period is < daily, start the simulation in the next day, 00:00 (so that all footprints are on the same time intervals)
-            period = self.rcf.get('output.responses.period')
-            if period < 86400:
-                tmax = datetime(tmax.year, tmax.month, tmax.day) + timedelta(1)
-            else :
-                raise NotImplementedError
-
         return tmin, tmax
 
     def config_meteo(self, start, end):

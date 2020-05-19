@@ -1,0 +1,8 @@
+#!/usr/bin/env bash
+
+module load Python/3.7.0-anaconda-5.3.0-extras-nsc1
+source activate /proj/inversion/conda/sdbm3
+
+#shift $(expr $OPTIND - 1 )
+$command $@
+

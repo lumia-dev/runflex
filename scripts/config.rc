@@ -1,38 +1,61 @@
-releases.kindz               : 1
+! Example/template runflex configuration file
+! Some environment variables need to be set:
+!   - RUNFLEX_PATH        : the path of the runflex python library ==> normally this is set by the library itself
+!   - RUNFLEX_SCRATCH     : temporary directory on the node where flexpart runs ==> should be set to ${SNIC_TMP} on tetralith 
+!   - RUNFLEX_NCPUS       : number of parallell processes to launch
+!   - RUNFLEX_INTERACTIVE : should be set to False on the interactive node and to True within jobs
+
+! ========================================================================================
+! Directories
+!  - user-specific, but set automatically according to environment variables:
+path.lib            : ${RUNFLEX_PATH}
+path.scratch_global : /proj/flexpart_aerosol/users/${USER}/runflex
+path.scratch_local  : ${RUNFLEX_SCRATCH}
+
+! - user specific, adjust according to your needs
+path.options        : /proj/flexpart_aerosol/runflex/scripts/options
+path.species        : /proj/flexpart_aerosol/runflex/scripts/species 
+path.output         : ${path.scratch_global}/output
+
+! - common to all users (normally ...)
+path.inputs         : /proj/inversion/FLEXPART
+path.meteo          : ${path.inputs}/meteo
+landuse.file        : ${path.inputs}/IGBP_int1.dat
+landuse.z0.file     : ${path.inputs}/surfdata.t
+surfdepo.file       : ${path.inputs}/surfdepo.t
+
+! ========================================================================================
+! FLEXPART build
+path.build          : ${path.scratch_global}/build/${compiler}
+path.src            : ${path.lib}/src
+machine             : tetralith 
+compiler            : ifort
+
+! ========================================================================================
+! runflex options : how many releases are grouped in one flexpart run, how many flexpart 
+!    runs are launched in parallel, where are the run files copied to (path.run, ideally
+!    on the local hard drive of the node), and where are the logs copied to (path.logs)
+path.run            : ${path.scratch_local}/run
+path.logs           : ${path.scratch_global}/logs
+nreleases.max       : 25
+ntasks.parallell    : ${RUNFLEX_NCPUS}
+run.interactive     : ${RUNFLEX_INTERACTIVE}
+
+! ========================================================================================
+! FLEXPART run configuration
+file.command        : ${path.options}/COMMAND
+file.grid           : ${path.options}/OUTGRID
+releases.length     : 3
+releases.kindz      : 1
 releases.altitude_correction : 1
+releases.npart      : 10000
+releases.mass       : ${releases.npart}
+species.number      : 1
+species.1.index     : 24
 
-path.build          : /scratch/guillaume/flexpart/build/${compiler}
-path.src            : /home/guillaume/dev/packages/runflex/src
-path.scratch.global : /scratch/guillaume/flexpart/
-path.run            : /scratch/guillaume/flexpart/run
-path.logs           : /scratch/guillaume/flexpart/logs
-path.options        : /home/guillaume/Projects/flexpart/options
-path.output         : /home/guillaume/Projects/flexpart/output
-path.meteo          : /home/guillaume/Projects/flexpart/meteo
-path.species        : /home/guillaume/Projects/flexpart/SPECIES
-machine.data        : /proj/inversion/FLEXPART
-
-machine    : ubuntu
-compiler   : gfortran
-
-nreleases.max    : 25
-length           : 3
-ntasks.parallell : 2
-output.responses.period : 10800
+! ========================================================================================
+! Meteo
 meteo.prefix     : EI
 meteo.interv     : 3
-meteo.archive    : /proj/inversion/FLEXPART/meteo/${meteogrid}
+meteo.archive    : ${path.meteo}/${meteogrid}
 meteogrid        : ei.eurocom.50x50.ml60.T255.gg
-releases.npart : 10000
-releases.mass  : ${releases.npart}
-species.number  : 1
-species.1.index : 24
-
-landuse.file                              : ${machine.data}/IGBP_int1.dat
-landuse.z0.file                           : ${machine.data}/surfdata.t
-surfdepo.file                             : ${machine.data}/surfdepo.t
-
-run.interactive : F
-
-file.command: /home/guillaume/Projects/flexpart/options/COMMAND
-file.grid:    /home/guillaume/Projects/flexpart/options/OUTGRID
