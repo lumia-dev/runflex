@@ -301,6 +301,8 @@ class runFlexpart:
         # Create the run directory
         rundir = self.rcf.get('path.run')
         builddir = self.rcf.get('path.build')
+        checkpath(rundir)
+        checkpath(builddir)
 
         # Copy the executable to the run directory
         shutil.copy(os.path.join(builddir, 'flexpart.x'), rundir)
