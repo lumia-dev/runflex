@@ -5,7 +5,7 @@ import shutil
 import time
 import logging
 from pandas import DataFrame
-from numpy import inf
+from numpy import inf, floor
 from datetime import datetime, timedelta
 import runflex.logging_tools
 import subprocess
@@ -208,12 +208,14 @@ class Observations:
 
         # Compute the number of chunks, based on the number of observations and obs/run:
         nobstot = self.observations.shape[0]
-        nchunks = nobstot/nobsmax + (nobstot%nobsmax > 0)
+        nchunks = int(floor(nobstot/nobsmax)) + (nobstot%nobsmax > 0)
 
         # If there are more CPUs than observation chunks, reduce the number of obs/chunk:
         if nchunks < ncpus :
             nchunks = ncpus
-            nobsmax = nobstot/nchunks + (nobstot%nchunks > 0)
+            nobsmax = nobstot/nchunks
+            if (nobstot%nchunks > 0):
+                nchunks += 1
 
         logger.debug("    Number of CPUs detected: %i", ncpus)
         logger.debug("     Number of observations: %i", nobstot)
