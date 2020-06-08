@@ -367,7 +367,7 @@ class runFlexpart:
             '--job-name=flexpart.%i' % ichunk,
             '-o', '%s/job.%i.out' % (logpath, ichunk),
             '-e', '%s/job.%i.out' % (logpath, ichunk),
-            'python', os.path.abspath(__file__), '--db', dbf, '--rc', os.path.join(self.rcf.dirname, self.rcf.filename), '--tag', self.rcf.get('tag'), '--path', rundir
+            'python', os.path.abspath(__file__), '--db', dbf, '--rc', os.path.join(self.rcf.dirname, self.rcf.filename), '--path', rundir
         ]
         logger.info(' '.join([x for x in cmd]))
 
@@ -399,7 +399,6 @@ def parse_options(args):
     p.add_option('-r', '--rc', dest='rcf')
     p.add_option('-d', '--db', dest='obs')
     p.add_option('-p', '--path', dest='rundir')
-    p.add_option('-t', '--tag', dest='tag')
     (options, outargs) = p.parse_args(args)
     return (options, outargs)
 
@@ -427,7 +426,6 @@ if __name__ == '__main__' :
     # adjust the run path
     rcf = rctools.rc(rcfile)
     rcf.setkey('path.run', rundir)
-    rcf.setkey('tag', opts.tag)
 
     # Read the obs database
     db = read_hdf(dbfile)
