@@ -5,7 +5,7 @@ import shutil
 import time
 import logging
 from pandas import DataFrame
-from numpy import inf
+from numpy import inf, floor
 from datetime import datetime, timedelta
 import runflex.logging_tools
 import subprocess
@@ -208,12 +208,15 @@ class Observations:
 
         # Compute the number of chunks, based on the number of observations and obs/run:
         nobstot = self.observations.shape[0]
-        nchunks = nobstot/nobsmax + (nobstot%nobsmax > 0)
+        nchunks = int(floor(nobstot/nobsmax)) + (nobstot%nobsmax > 0)
 
         # If there are more CPUs than observation chunks, reduce the number of obs/chunk:
         if nchunks < ncpus :
             nchunks = ncpus
-            nobsmax = nobstot/nchunks + (nobstot%nchunks > 0)
+            nobsmax = nobstot/nchunks
+            if (nobstot%nchunks > 0):
+                nchunks += 1
+            #nobsmax = nobstot/nchunks + (nobstot%nchunks > 0)
 
         logger.debug("    Number of CPUs detected: %i", ncpus)
         logger.debug("     Number of observations: %i", nobstot)
@@ -222,7 +225,7 @@ class Observations:
         dbfiles = []
         i0 = 0
         pbar = tqdm(total=self.observations.shape[0], desc='splitting observation database')
-        checkpath(self.rcf.get('path.scratch.global'))
+        checkpath(self.rcf.get('path.scratch_global'))
         while i0 < self.observations.shape[0]:
 
             # select the slice of the observation database for that chunk
@@ -303,6 +306,8 @@ class runFlexpart:
         # Create the run directory
         rundir = self.rcf.get('path.run')
         builddir = self.rcf.get('path.build')
+        checkpath(rundir)
+        checkpath(builddir)
 
         # Copy the executable to the run directory
         print(builddir)
@@ -323,9 +328,9 @@ class runFlexpart:
             nobsmax = self.rcf.get('nreleases.max', default=50)
 
         dbfiles = self.observations.write(
-            path=self.rcf.get('path.scratch.global'),
+            path=self.rcf.get('path.scratch_global'),
             nobsmax=nobsmax, 
-            ncpus=self.rcf.get('ntasks_parallell'),
+            ncpus=self.rcf.get('ntasks.parallell'),
             maxdt=maxdt
         )
         self.runTasks(dbfiles)
@@ -366,19 +371,19 @@ class runFlexpart:
             '--job-name=flexpart.%i' % ichunk,
             '-o', '%s/job.%i.out' % (logpath, ichunk),
             '-e', '%s/job.%i.out' % (logpath, ichunk),
-            'python', os.path.abspath(__file__), '--db', dbf, '--rc', os.path.join(self.rcf.dirname, self.rcf.filename), '--tag', self.rcf.get('tag'), '--path', rundir
+            'python', os.path.abspath(__file__), '--db', dbf, '--rc', os.path.join(self.rcf.dirname, self.rcf.filename), '--path', rundir
         ]
         logger.info(' '.join([x for x in cmd]))
 
         # delay the submission if there are too many tasks running:
-        ntasks = subprocess.check_output(['squeue', '-s', '-j', os.environ['SLURM_JOBID']]).count(os.environ['SLURM_JOBID'])
+        ntasks = subprocess.check_output(['squeue', '-s', '-j', os.environ['SLURM_JOBID']], text=True).count(os.environ['SLURM_JOBID'])
         ncpus = self.rcf.get('ntasks.parallell')
 
         logger.debug("Running tasks: %i", ntasks)
         while ntasks >= ncpus :
             logger.debug("Too many tasks (%i). Waiting 1 minute ...", ntasks)
             time.sleep(60)
-            ntasks = subprocess.check_output(['squeue', '-s', '-j', os.environ['SLURM_JOBID']]).count(os.environ['SLURM_JOBID'])
+            ntasks = subprocess.check_output(['squeue', '-s', '-j', os.environ['SLURM_JOBID']], text=True).count(os.environ['SLURM_JOBID'])
 
         return subprocess.Popen(cmd)
 
@@ -398,7 +403,6 @@ def parse_options(args):
     p.add_option('-r', '--rc', dest='rcf')
     p.add_option('-d', '--db', dest='obs')
     p.add_option('-p', '--path', dest='rundir')
-    p.add_option('-t', '--tag', dest='tag')
     (options, outargs) = p.parse_args(args)
     return (options, outargs)
 
@@ -426,7 +430,6 @@ if __name__ == '__main__' :
     # adjust the run path
     rcf = rctools.rc(rcfile)
     rcf.setkey('path.run', rundir)
-    rcf.setkey('tag', opts.tag)
 
     # Read the obs database
     db = read_hdf(dbfile)
