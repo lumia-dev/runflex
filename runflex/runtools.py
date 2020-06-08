@@ -281,6 +281,7 @@ class runFlexpart:
 
         # Copy files to build path
         builddir = self.rcf.get('path.build')
+        print('builddir', builddir)
         checkpath(builddir)
         srcdir = os.path.normpath(self.rcf.get('path.src')+'/')
         os.system('rsync -avh %s/*.f90 %s'%(srcdir,builddir))
@@ -288,10 +289,11 @@ class runFlexpart:
 
         # make
         prevdir = os.getcwd()
+        print('prevdir', prevdir)
         os.chdir(builddir)
         if os.path.exists('flexpart.x'):
             os.remove('flexpart.x')
-        os.system('make')
+        os.system('make ncf=yes')
         t1 = datetime.fromtimestamp(os.path.getmtime('flexpart.x'))
         os.chdir(prevdir)
         if t0 > t1 :
@@ -303,6 +305,7 @@ class runFlexpart:
         builddir = self.rcf.get('path.build')
 
         # Copy the executable to the run directory
+        print(builddir)
         shutil.copy(os.path.join(builddir, 'flexpart.x'), rundir)
 
         # Setup the meteo files
