@@ -27,11 +27,14 @@ class Namelists:
         if filename is not None :
             for name in names :
                 self.lists = Namelist(name=name, file=filename)
+        self.mode = mode
     
     def addList(self, nmlist):
         self.lists.append(nmlist)
 
-    def write(self, filename):
+    def write(self, filename, mode='a'):
+        if mode == 'w' and os.path.exists(filename):
+            os.path.remove(filename)
         for nmlist in self.lists :
             nmlist.write(filename, mode='a')
 
@@ -91,6 +94,7 @@ class Command:
         self.gen_OUTGRID(rundir)
         self.copyFiles(rundir)
         self.gen_SPECIES(rundir)
+        self.create_directories()
 
     def copyFiles(self, rundir):
         shutil.copy(self.rcf.get('landuse.file'), rundir)
@@ -107,6 +111,9 @@ class Command:
             #fid.write('=====\n')
             #fid.write('=====\n')
             #fid.write('=====\n')
+
+    def create_directories(self):
+        checkpath(self.rcf.get('path.output'))
 
     def gen_COMMAND(self, rundir):
         command = Namelist(file=self.rcf.get('file.command'), name='COMMAND')
@@ -192,7 +199,7 @@ class Observations:
             rl.add('PARTS', obs.npart)
             rl.add('COMMENT', obs.Index, fmt=str)
             releases.addList(rl)
-        releases.write(os.path.join(rundir, 'RELEASES'))
+        releases.write(os.path.join(rundir, 'RELEASES'), mode='w')
 
     def write(self, path, ncpus=1, nobsmax=None, maxdt=7):
         """
@@ -219,7 +226,6 @@ class Observations:
             nobsmax = nobstot/nchunks
             if (nobstot%nchunks > 0):
                 nchunks += 1
-            #nobsmax = nobstot/nchunks + (nobstot%nchunks > 0)
 
         logger.debug("    Number of CPUs detected: %i", ncpus)
         logger.debug("     Number of observations: %i", nobstot)
