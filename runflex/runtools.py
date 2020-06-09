@@ -27,11 +27,14 @@ class Namelists:
         if filename is not None :
             for name in names :
                 self.lists = Namelist(name=name, file=filename)
+        self.mode = mode
     
     def addList(self, nmlist):
         self.lists.append(nmlist)
 
-    def write(self, filename):
+    def write(self, filename, mode='a'):
+        if mode == 'w' and os.path.exists(filename):
+            os.path.remove(filename)
         for nmlist in self.lists :
             nmlist.write(filename, mode='a')
 
@@ -193,7 +196,7 @@ class Observations:
             rl.add('PARTS', obs.npart)
             rl.add('COMMENT', obs.Index, fmt=str)
             releases.addList(rl)
-        releases.write(os.path.join(rundir, 'RELEASES'))
+        releases.write(os.path.join(rundir, 'RELEASES'), mode='w')
 
     def write(self, path, ncpus=1, nobsmax=None, maxdt=7):
         """
