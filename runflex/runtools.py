@@ -91,6 +91,7 @@ class Command:
         self.gen_OUTGRID(rundir)
         self.copyFiles(rundir)
         self.gen_SPECIES(rundir)
+        self.create_directories()
 
     def copyFiles(self, rundir):
         shutil.copy(self.rcf.get('landuse.file'), rundir)
@@ -107,6 +108,9 @@ class Command:
             fid.write('=====\n')
             fid.write('=====\n')
             fid.write('=====\n')
+
+    def create_directories(self):
+        checkpath(self.rcf.get('path.output'))
 
     def gen_COMMAND(self, rundir):
         command = Namelist(file=self.rcf.get('file.command'), name='COMMAND')
