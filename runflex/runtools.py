@@ -103,10 +103,10 @@ class Command:
             fid.write('%s/\n' % self.rcf.get('path.output'))
             fid.write('%s/\n' % self.rcf.get('path.meteo'))
             fid.write(os.path.join(rundir, 'AVAILABLE'))
-            fid.write('\n')
-            fid.write('=====\n')
-            fid.write('=====\n')
-            fid.write('=====\n')
+            #fid.write('\n')
+            #fid.write('=====\n')
+            #fid.write('=====\n')
+            #fid.write('=====\n')
 
     def gen_COMMAND(self, rundir):
         command = Namelist(file=self.rcf.get('file.command'), name='COMMAND')
@@ -119,6 +119,8 @@ class Command:
     def gen_OUTGRID(self, rundir):
         gridfile = self.rcf.get('file.grid')
         shutil.copy(gridfile, rundir)
+        #if ~os.path.isdir('path.output'):
+        #    os.mkdir('path.output')
 
     def gen_SPECIES(self, rundir):
         checkpath(os.path.join(rundir, 'SPECIES'))
@@ -284,7 +286,6 @@ class runFlexpart:
 
         # Copy files to build path
         builddir = self.rcf.get('path.build')
-        print('builddir', builddir)
         checkpath(builddir)
         srcdir = os.path.normpath(self.rcf.get('path.src')+'/')
         os.system('rsync -avh %s/*.f90 %s'%(srcdir,builddir))
@@ -292,7 +293,6 @@ class runFlexpart:
 
         # make
         prevdir = os.getcwd()
-        print('prevdir', prevdir)
         os.chdir(builddir)
         if os.path.exists('flexpart.x'):
             os.remove('flexpart.x')
@@ -310,7 +310,6 @@ class runFlexpart:
         checkpath(builddir)
 
         # Copy the executable to the run directory
-        print(builddir)
         shutil.copy(os.path.join(builddir, 'flexpart.x'), rundir)
 
         # Setup the meteo files
