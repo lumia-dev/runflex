@@ -119,8 +119,9 @@ class Command:
     def gen_OUTGRID(self, rundir):
         gridfile = self.rcf.get('file.grid')
         shutil.copy(gridfile, rundir)
-        #if ~os.path.isdir('path.output'):
-        #    os.mkdir('path.output')
+        checkpath(self.rcf.get('path.output'))
+        #if os.path.isdir(self.rcf.get('path.output')) == False: # Check whether output directory exists otherwise creates it. Flexparat wants to add the COMMAND file here and therefore the directiry needs to exist. 
+        #    os.mkdir(self.rcf.get('path.output'))
 
     def gen_SPECIES(self, rundir):
         checkpath(os.path.join(rundir, 'SPECIES'))
@@ -296,7 +297,7 @@ class runFlexpart:
         os.chdir(builddir)
         if os.path.exists('flexpart.x'):
             os.remove('flexpart.x')
-        os.system('make ncf=yes')
+        os.system('make')
         t1 = datetime.fromtimestamp(os.path.getmtime('flexpart.x'))
         os.chdir(prevdir)
         if t0 > t1 :
@@ -314,7 +315,7 @@ class runFlexpart:
 
         # Setup the meteo files
         start, end = self.config_times()
-        #self.config_meteo(start, end)
+        self.config_meteo(start, end)
 
         c = Command(self.rcf, start, end)
         c.genFiles()

@@ -10,8 +10,8 @@ logger.setLevel("DEBUG")
 
 # Create obs list
 db = DataFrame(columns=['time', 'lat', 'lon', 'alt', 'height', 'code'])
-db.loc[:, 'time'] = date_range(datetime(2017,1,1), datetime(2017,1,2), freq='H')
-db.loc[:, 'lat'] = 50.1
+db.loc[:, 'time'] = date_range(datetime(2018,1,1), datetime(2018,1,2), freq='H')
+db.loc[:, 'lat'] = 56.1
 db.loc[:, 'lon'] = 13.42
 db.loc[:, 'alt'] = 12.
 db.loc[:, 'height'] = 100.
@@ -29,5 +29,5 @@ fp.setupObs(db)
 # Compile
 fp.compile()
 
-# 
-fp.configure()
+fp.distribute() 
+#fp.configure()
