@@ -27,7 +27,6 @@ class Namelists:
         if filename is not None :
             for name in names :
                 self.lists = Namelist(name=name, file=filename)
-        self.mode = mode
     
     def addList(self, nmlist):
         self.lists.append(nmlist)
@@ -107,10 +106,10 @@ class Command:
             fid.write('%s/\n' % self.rcf.get('path.output'))
             fid.write('%s/\n' % self.rcf.get('path.meteo'))
             fid.write(os.path.join(rundir, 'AVAILABLE'))
-            fid.write('\n')
-            fid.write('=====\n')
-            fid.write('=====\n')
-            fid.write('=====\n')
+            #fid.write('\n')
+            #fid.write('=====\n')
+            #fid.write('=====\n')
+            #fid.write('=====\n')
 
     def create_directories(self):
         checkpath(self.rcf.get('path.output'))
@@ -126,6 +125,9 @@ class Command:
     def gen_OUTGRID(self, rundir):
         gridfile = self.rcf.get('file.grid')
         shutil.copy(gridfile, rundir)
+        checkpath(self.rcf.get('path.output'))
+        #if os.path.isdir(self.rcf.get('path.output')) == False: # Check whether output directory exists otherwise creates it. Flexparat wants to add the COMMAND file here and therefore the directiry needs to exist. 
+        #    os.mkdir(self.rcf.get('path.output'))
 
     def gen_SPECIES(self, rundir):
         checkpath(os.path.join(rundir, 'SPECIES'))
@@ -212,10 +214,12 @@ class Observations:
 
         # 1st, make sure the observations are sorted by time (so that jobs will contain as much as possible data in similart time interval)
         self.observations.sort_values('time', inplace=True)
+        #print('observations', self.observations)
 
         # Compute the number of chunks, based on the number of observations and obs/run:
         nobstot = self.observations.shape[0]
         nchunks = int(floor(nobstot/nobsmax)) + (nobstot%nobsmax > 0)
+        #print('nchunks', nchunks)
 
         # If there are more CPUs than observation chunks, reduce the number of obs/chunk:
         if nchunks < ncpus :
@@ -227,11 +231,12 @@ class Observations:
         logger.debug("    Number of CPUs detected: %i", ncpus)
         logger.debug("     Number of observations: %i", nobstot)
         logger.debug("    Max number of obs/chunk: %i", nobsmax)
+        print('nchunks', nchunks)
 
         dbfiles = []
         i0 = 0
         pbar = tqdm(total=self.observations.shape[0], desc='splitting observation database')
-        checkpath(self.rcf.get('path.scratch.global'))
+        checkpath(self.rcf.get('path.scratch_global'))
         while i0 < self.observations.shape[0]:
 
             # select the slice of the observation database for that chunk
@@ -318,7 +323,7 @@ class runFlexpart:
 
         # Setup the meteo files
         start, end = self.config_times()
-        #self.config_meteo(start, end)
+        self.config_meteo(start, end)
 
         c = Command(self.rcf, start, end)
         c.genFiles()
@@ -331,9 +336,9 @@ class runFlexpart:
             nobsmax = self.rcf.get('nreleases.max', default=50)
 
         dbfiles = self.observations.write(
-            path=self.rcf.get('path.scratch.global'),
+            path=self.rcf.get('path.scratch_global'),
             nobsmax=nobsmax, 
-            ncpus=self.rcf.get('ntasks_parallell'),
+            ncpus=self.rcf.get('ntasks.parallell'),
             maxdt=maxdt
         )
         self.runTasks(dbfiles)
@@ -379,14 +384,14 @@ class runFlexpart:
         logger.info(' '.join([x for x in cmd]))
 
         # delay the submission if there are too many tasks running:
-        ntasks = subprocess.check_output(['squeue', '-s', '-j', os.environ['SLURM_JOBID']]).count(os.environ['SLURM_JOBID'])
+        ntasks = subprocess.check_output(['squeue', '-s', '-j', os.environ['SLURM_JOBID']], text=True).count(os.environ['SLURM_JOBID'])
         ncpus = self.rcf.get('ntasks.parallell')
 
         logger.debug("Running tasks: %i", ntasks)
         while ntasks >= ncpus :
             logger.debug("Too many tasks (%i). Waiting 1 minute ...", ntasks)
             time.sleep(60)
-            ntasks = subprocess.check_output(['squeue', '-s', '-j', os.environ['SLURM_JOBID']]).count(os.environ['SLURM_JOBID'])
+            ntasks = subprocess.check_output(['squeue', '-s', '-j', os.environ['SLURM_JOBID']], text=True).count(os.environ['SLURM_JOBID'])
 
         return subprocess.Popen(cmd)
 

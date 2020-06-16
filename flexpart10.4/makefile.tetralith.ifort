@@ -44,12 +44,14 @@
 #FLEXPART-MPI-DBG = DBG_FLEXPART_MPI
 
 # Serial processing executable
-FLEXPART-SERIAL = FLEXPART
+FLEXPART-SERIAL = flexpart.x
+
+### Enable netCDF output?
 
 
 F90	  = ifort 
 
-LIBS     = -L${GRIB_API_DIR}/lib -L${ECCODES_DIR}/lib -leccodes_f90 -leccodes -lm -lnetcdff -lnetcdf -lnetcdf -Wl,-rpath,${GRIB_API_DIR}/lib -DUSE_NCF -lnetcdff
+LIBS     = -L${GRIB_API_DIR}/lib -L${ECCODES_DIR}/lib -leccodes_f90 -leccodes -lm -Wl,-rpath,${GRIB_API_DIR}/lib -DUSE_NCF -lnetcdff #  
 
 FFLAGS   = -cpp -C -trace -fPIC -fp-model strict -fomit-frame-pointer -m64 -warn align -O2 -align -no-ipo -parallel -mcmodel=large -shared-intel -convert little_endian -I${GRIB_API_DIR}/include -I${ECCODES_DIR}/include -DUSE_NCF -lnetcdff
 

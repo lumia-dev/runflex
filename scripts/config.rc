@@ -9,13 +9,13 @@
 ! Directories
 !  - user-specific, but set automatically according to environment variables:
 path.lib            : ${RUNFLEX_PATH}
-path.scratch_global : /proj/flexpart_aerosol/users/${USER}/runflex
-path.scratch_local  : ${RUNFLEX_SCRATCH}
+path.scratch_global : /proj/flexpart_aerosol/temp/runflex !/proj/flexpart_aerosol/users/${USER}/runflex
+path.scratch_local  : /proj/flexpart_aerosol/temp !${RUNFLEX_SCRATCH} !/proj/flexpart_aerosol/users/x_moasp/test !
 
 ! - user specific, adjust according to your needs
-path.options        : /proj/flexpart_aerosol/runflex/scripts/options
-path.species        : /proj/flexpart_aerosol/runflex/scripts/species 
-path.output         : ${path.scratch_global}/output
+path.options        : /proj/flexpart_aerosol/runflex_moa/runflex/scripts/options
+path.species        : /proj/flexpart_aerosol/runflex_moa/runflex/scripts/species 
+path.output         : ${path.scratch_global}/output/
 
 ! - common to all users (normally ...)
 path.inputs         : /proj/inversion/FLEXPART
@@ -35,9 +35,9 @@ compiler            : ifort
 ! runflex options : how many releases are grouped in one flexpart run, how many flexpart 
 !    runs are launched in parallel, where are the run files copied to (path.run, ideally
 !    on the local hard drive of the node), and where are the logs copied to (path.logs)
-path.run            : ${path.scratch_local}/run
+path.run            : ${path.scratch_local}/run/
 path.logs           : ${path.scratch_global}/logs
-nreleases.max       : 25
+nreleases.max       : 2
 ntasks.parallell    : ${RUNFLEX_NCPUS}
 run.interactive     : ${RUNFLEX_INTERACTIVE}
 
@@ -46,12 +46,12 @@ run.interactive     : ${RUNFLEX_INTERACTIVE}
 file.command        : ${path.options}/COMMAND
 file.grid           : ${path.options}/OUTGRID
 releases.length     : 3
-releases.kindz      : 1
+releases.kindz      : 1 
 releases.altitude_correction : 1
 releases.npart      : 10000
 releases.mass       : ${releases.npart}
 species.number      : 1
-species.1.index     : 24
+species.1.index     : 25
 
 ! ========================================================================================
 ! Meteo
@@ -59,3 +59,4 @@ meteo.prefix     : EI
 meteo.interv     : 3
 meteo.archive    : ${path.meteo}/${meteogrid}
 meteogrid        : ei.eurocom.50x50.ml60.T255.gg
+
