@@ -27,7 +27,6 @@ class Namelists:
         if filename is not None :
             for name in names :
                 self.lists = Namelist(name=name, file=filename)
-        self.mode = mode
     
     def addList(self, nmlist):
         self.lists.append(nmlist)
@@ -215,10 +214,12 @@ class Observations:
 
         # 1st, make sure the observations are sorted by time (so that jobs will contain as much as possible data in similart time interval)
         self.observations.sort_values('time', inplace=True)
+        #print('observations', self.observations)
 
         # Compute the number of chunks, based on the number of observations and obs/run:
         nobstot = self.observations.shape[0]
         nchunks = int(floor(nobstot/nobsmax)) + (nobstot%nobsmax > 0)
+        #print('nchunks', nchunks)
 
         # If there are more CPUs than observation chunks, reduce the number of obs/chunk:
         if nchunks < ncpus :
@@ -230,6 +231,7 @@ class Observations:
         logger.debug("    Number of CPUs detected: %i", ncpus)
         logger.debug("     Number of observations: %i", nobstot)
         logger.debug("    Max number of obs/chunk: %i", nobsmax)
+        print('nchunks', nchunks)
 
         dbfiles = []
         i0 = 0
