@@ -34,7 +34,7 @@ class Namelists:
 
     def write(self, filename, mode='a'):
         if mode == 'w' and os.path.exists(filename):
-            os.path.remove(filename)
+            os.remove(filename)
         for nmlist in self.lists :
             nmlist.write(filename, mode='a')
 
