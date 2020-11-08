@@ -3,7 +3,7 @@
  OUTLAT0 = 33.00 ,
  NUMXGRID = 100 ,
  NUMYGRID = 80 ,
- DXOUT = 0.50 ,
- DYOUT = 0.50 ,
+ DXOUT = 0.25 ,
+ DYOUT = 0.25 ,
  OUTHEIGHTS = 100.0 ,
  /

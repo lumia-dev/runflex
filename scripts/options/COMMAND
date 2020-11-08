@@ -13,7 +13,7 @@
  IFINE = 4 ,
  IOUT = 9 ,
  IPOUT = 0 ,
- LSUBGRID = 0 ,
+ LSUBGRID = 1 ,
  LCONVECTION = 1 ,
  LAGESPECTRA = 0 ,
  IPIN = 0 ,

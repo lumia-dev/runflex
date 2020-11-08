@@ -490,4 +490,6 @@ program flexpart
   write(*,*) 'CONGRATULATIONS: YOU HAVE SUCCESSFULLY COMPLETED A FLE&
        &XPART MODEL RUN!'
 
+  open(unit=321, file=trim(path(2)(1:length(2)))//'/flexpart.ok', status='new')
+
 end program flexpart
