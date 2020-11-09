@@ -239,7 +239,7 @@ class Observations:
         # If there are more CPUs than observation chunks, reduce the number of obs/chunk:
         if nchunks < ncpus :
             nchunks = ncpus
-            nobsmax = nobstot/nchunks
+            nobsmax = nobstot//nchunks
             if (nobstot%nchunks > 0):
                 nchunks += 1
 
@@ -426,6 +426,7 @@ def parse_options(args):
     p.add_option('-r', '--rc', dest='rcf')
     p.add_option('-d', '--db', dest='obs')
     p.add_option('-p', '--path', dest='rundir')
+    p.add_option('-o', '--output', dest='outdir', default=None)
     (options, outargs) = p.parse_args(args)
     return (options, outargs)
 
@@ -449,10 +450,15 @@ if __name__ == '__main__' :
     rcfile = opts.rcf
     dbfile = opts.obs
     rundir = opts.rundir
+    outdir = opts.outdir
 
     # adjust the run path
     rcf = rctools.rc(rcfile)
     rcf.setkey('path.run', rundir)
+
+    # Optionally, adjust the output path:
+    if opts.outdir is not None :
+        rcf.setkey('path.output', outdir)
 
     # Read the obs database
     db = read_hdf(dbfile)
