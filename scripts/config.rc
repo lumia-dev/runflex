@@ -37,7 +37,7 @@ compiler            : ifort
 !    on the local hard drive of the node), and where are the logs copied to (path.logs)
 path.run            : ${path.scratch_local}/run/
 path.logs           : ${path.scratch_global}/logs
-nreleases.max       : 2
+nreleases.max       : 24
 ntasks.parallell    : ${RUNFLEX_NCPUS}
 run.interactive     : ${RUNFLEX_INTERACTIVE}
 
@@ -45,7 +45,7 @@ run.interactive     : ${RUNFLEX_INTERACTIVE}
 ! FLEXPART run configuration
 file.command        : ${path.options}/COMMAND
 file.grid           : ${path.options}/OUTGRID
-releases.length     : 3
+releases.length     : 5
 releases.kindz      : 1 
 releases.altitude_correction : 1
 releases.npart      : 10000

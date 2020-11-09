@@ -10,7 +10,7 @@ logger.setLevel("DEBUG")
 
 # Create obs list
 db = DataFrame(columns=['time', 'lat', 'lon', 'alt', 'height', 'code'])
-db.loc[:, 'time'] = date_range(datetime(2018,1,1), datetime(2018,1,2), freq='H')
+db.loc[:, 'time'] = date_range(datetime(2018,1,3), datetime(2018,1,4), freq='H')
 db.loc[:, 'lat'] = 56.1
 db.loc[:, 'lon'] = 13.42
 db.loc[:, 'alt'] = 12.
