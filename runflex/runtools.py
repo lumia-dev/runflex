@@ -116,6 +116,21 @@ class Command:
 
     def gen_COMMAND(self, rundir):
         command = Namelist(file=self.rcf.get('file.command'), name='COMMAND')
+        # Fix times so that we have conforming time steps:
+        dt = timedelta(seconds=int(command.keys['LOUTAVER']))
+        start, end = self.start, self.end
+        if dt < timedelta(days=1):
+            start = datetime(start.year, start.month, start.day)
+            end = datetime(end.year, end.month, end.day)
+            while start+dt < self.start:
+                start += dt
+            while end < self.end:
+                end += dt
+        else :
+            import pdb; pdb.set_trace()
+        self.start = start
+        self.end = end
+
         command.add('IBDATE', self.start.strftime("%Y%m%d"))
         command.add('IBTIME', self.start.strftime("%H%M%S"))
         command.add('IEDATE', self.end.strftime("%Y%m%d"))
