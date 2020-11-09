@@ -374,11 +374,15 @@ class runFlexpart:
         The "chunks" optional argument can be used to run only some of the tasks (in debug or restart context)
         """
 
+        slurm = False
         if os.path.exists(os.path.join(self.rcf.get('path.run'), 'flexpart.ok')):
             os.remove(os.path.join(self.rcf.get('path.run'), 'flexpart.ok'))
         if self.rcf.get('run.interactive'):
             self.submit = self.submit_interactive
-        else :
+        elif self.rcf.get('run.tsp'):
+            self.submit = self.submit_tsp
+        elif self.rcf.get('run.slurm', default=True) :
+            slurm = True
             self.submit = self.submit_sbatch
 
         pids = []
@@ -386,23 +390,24 @@ class runFlexpart:
             # Count the number of active tasks
             if chunks is None or ichunk in chunks :
                 pids.append(self.submit(dbf, ichunk))
-                time.sleep(5)
 
         # Wait for the runs to finish
-        if not self.rcf.get('run.interactive'):
+        if slurm :
             [pid.wait() for pid in pids]
 
     def submit_sbatch(self, dbf, ichunk):
+        time.sleep(5)
         logpath = self.rcf.get('path.logs')
         checkpath(logpath)
         rundir = os.path.join(self.rcf.get('path.run'), '%i'%ichunk)
+        outdir = os.path.join(self.rcf.get('path.output'), '%i'%ichunk)
         cmd = [
             'srun',
             '--exclusive', '-N', '1', '-n', '1',
             '--job-name=flexpart.%i' % ichunk,
             '-o', '%s/job.%i.out' % (logpath, ichunk),
             '-e', '%s/job.%i.out' % (logpath, ichunk),
-            'python', os.path.abspath(__file__), '--db', dbf, '--rc', os.path.join(self.rcf.dirname, self.rcf.filename), '--path', rundir
+            'python', os.path.abspath(__file__), '--db', dbf, '--rc', os.path.join(self.rcf.dirname, self.rcf.filename), '--path', rundir, '-o', outdir
         ]
         logger.info(' '.join([x for x in cmd]))
 
@@ -418,7 +423,31 @@ class runFlexpart:
 
         return subprocess.Popen(cmd)
 
+    def submit_tsp(self, dbf, ichunk):
+
+        # Construct outdir/rundir for the task
+        rundir = os.path.join(self.rcf.get('path.run'), '%i'%ichunk)
+        outdir = os.path.join(self.rcf.get('path.output'), '%i'%ichunk)
+
+        # Ensure that tsp runs with the appropriate number of CPUs
+        ncpus = self.rcf.get('ntasks.parallell')
+        os.system(f'tsp -S {ncpus}')
+
+        # Launch the subtask
+        cmd = ['tsp', 'python', os.path.abspath(__file__), '--db', dbf, '--rc', os.path.join(self.rcf.dirname, self.rcf.filename), '--path', rundir, '-o', outdir]
+        cmd = ' '.join([x for x in cmd])
+        logger.info(cmd)
+        os.system(cmd)
+
+        # Long delay for the first simulations, do avoid overloading the system. Then go faster (the processes are waiting anyway)
+        if ichunk < ncpus :
+            delay = 90
+        else :
+            delay = 0.1
+        time.sleep(delay)
+
     def submit_interactive(self, dbf, ichunk):
+        time.sleep(3)
         rundir = os.path.join(self.rcf.get('path.run'), '%i'%ichunk)
         cmd = 'python %s --db %s --rc %s --path %s'%(os.path.abspath(__file__), dbf, os.path.join(self.rcf.dirname, self.rcf.filename), rundir)
         logger.info(cmd)
