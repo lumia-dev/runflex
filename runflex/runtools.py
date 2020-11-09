@@ -3,18 +3,18 @@
 import os
 import shutil
 import time
+from runflex.logging_tools import logger
 import logging
 from pandas import DataFrame
 from numpy import inf, floor
 from datetime import datetime, timedelta
-import runflex.logging_tools
 import subprocess
 from runflex import tqdm
 import tempfile
 import runflex.rctools as rctools
 import runflex.meteo as meteo
 
-logger = logging.getLogger(__name__)
+#logger = logging.getLogger(__name__)
 
 def checkpath(path):
     if not os.path.isdir(path):
@@ -478,6 +478,7 @@ def parse_options(args):
     p.add_option('-d', '--db', dest='obs')
     p.add_option('-p', '--path', dest='rundir')
     p.add_option('-o', '--output', dest='outdir', default=None)
+    p.add_option('--verbosity', '-v', default='INFO')
     (options, outargs) = p.parse_args(args)
     return (options, outargs)
 
@@ -495,8 +496,11 @@ if __name__ == '__main__' :
     import sys
     # parse arguments
     
-    logger.info(os.getcwd())
     opts, args = parse_options(sys.argv)
+
+    #logger = logging.getLogger(os.path.basename(__file__))
+    logger.setLevel(opts.verbosity)
+    logger.info(os.getcwd())
 
     rcfile = opts.rcf
     dbfile = opts.obs

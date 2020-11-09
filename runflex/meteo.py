@@ -3,6 +3,7 @@
 import os
 import glob
 import logging
+import runflex.logging_tools
 from time import sleep
 import subprocess
 from datetime import datetime, timedelta
@@ -51,11 +52,12 @@ class RcloneArchive:
 
         # Get the path on the archive:
         dest, filename = os.path.split(filename)
-        date = datetime.strptime(filename[2:], '%Y%m%d%H')
+        date = datetime.strptime(filename[2:], '%y%m%d%H')
         path = os.path.join(self.path, str(date.year), str(date.month))
 
         # Get the list of files in the rclone repo, in the same folder (only if we are in a new folder)
         if not path in self.remote_structure :
+            logger.info("Retrieving list of files in rclone folder {self.remote:path})")
             self.remote_structure[path] = subprocess.check_output(['rclone', 'lsf', f'{self.remote}:{path}'], universal_newlines=True).split('\n')
         
         # Retrieve the file
@@ -74,7 +76,8 @@ class RcloneArchive:
             # Get the age of the file:
             if datetime.now().timestamp()-os.path.getctime(self.lockfile) > self.lock_expire:
                 self._release_lock(warn=f'Removing expired lock file {self.lockfile}')
-            sleep(10)
+            logger.warn(f"Meteo lock file found {self.lockfile}, waiting 30 seconds")
+            sleep(30)
         open(self.lockfile, 'a').close()
 
     def _release_lock(self, warn=False):
@@ -127,7 +130,7 @@ class Meteo:
             tf = tf+self.tres+timedelta(1)
         fname = []
         while ti <= tf :
-            fname.append(os.path.join(self.path, ti.strftime(f'%Y/%-m/{self.prefix}%y%m%d%H')))
+            fname.append(os.path.join(self.path, ti.strftime(f'{self.prefix}%y%m%d%H')))
             ti += self.tres
         return fname
 
