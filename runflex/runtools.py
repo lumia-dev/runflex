@@ -20,6 +20,20 @@ def checkpath(path):
     if not os.path.isdir(path):
         os.makedirs(path)
 
+def safecopy(source, dest, count=0, maxcount=5):
+    """
+    Sometimes if many processes try accessing the same file at the same time, the copy will fail. This ensures that the 
+    copy is attempted again a few times before failing for real
+    """
+    if count < maxcount :
+        try :
+            shutil.copy(source, dest)
+        except OSError :
+            time.sleep(count+1)
+            safecopy(source, dest, count+1)
+    else :
+        logger.error(f"File {source} could not be copied to {dest}")
+        raise RuntimeError
 
 class Namelists:
     def __init__(self, filename=None, names=None):
@@ -342,7 +356,7 @@ class runFlexpart:
         checkpath(builddir)
 
         # Copy the executable to the run directory
-        shutil.copy(os.path.join(builddir, 'flexpart.x'), rundir)
+        safecopy(os.path.join(builddir, 'flexpart.x'), rundir)
 
         # Setup the meteo files
         start, end = self.config_times()
