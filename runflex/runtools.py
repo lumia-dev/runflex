@@ -281,6 +281,13 @@ class runFlexpart:
     def __init__(self, rcf):
         self.rcf = rcf
         self.observations = Observations(self.rcf)
+        self.meteo = meteo.Meteo(
+            self.rcf.get('path.meteo'),
+            archive=self.rcf.get('meteo.archive', default=None),
+            prefix = self.rcf.get('meteo.prefix'),
+            tres=timedelta(self.rcf.get('meteo.interv')/24.)
+        )
+
 
     def setupObs(self, obslist):
         self.observations.setup(obslist)
@@ -296,14 +303,15 @@ class runFlexpart:
 
     def config_meteo(self, start, end):
         """ Check the meteorological files """
-        prefix = self.rcf.get('meteo.prefix')
-        checkpath(self.rcf.get('path.meteo'))
-        mm = meteo.meteo(self.rcf.get('path.meteo'), prefix)
-        tres = self.rcf.get('meteo.interv')
-        tres = timedelta(tres / 24.)
-        if self.rcf.haskey('meteo.archive'):
-            mm.checkUnmigrate(start, end, tres, self.rcf.get('meteo.archive'))
-        mm.genAvailableFile('%s/AVAILABLE' % self.rcf.get('path.run'))
+
+        if self.rcf.get('meteo.cleanup'):
+            self.meteo.cleanup(
+                self.rcf.get('meteo.cleanup.minspace'),
+                self.rcf.get('meteo.cleanup.minage')
+            )
+
+        self.meteo.checkUnmigrate(start, end)
+        self.meteo.genAvailableFile('%s/AVAILABLE' % self.rcf.get('path.run'))
 
     def compile(self):
         t0 = datetime.now()
