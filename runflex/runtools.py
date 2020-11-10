@@ -153,7 +153,7 @@ class Command:
 
     def gen_OUTGRID(self, rundir):
         gridfile = self.rcf.get('file.grid')
-        shutil.copy(gridfile, rundir)
+        shutil.copy(gridfile, os.path.join(rundir, 'OUTGRID'))
         checkpath(self.rcf.get('path.output'))
         #if os.path.isdir(self.rcf.get('path.output')) == False: # Check whether output directory exists otherwise creates it. Flexparat wants to add the COMMAND file here and therefore the directiry needs to exist. 
         #    os.mkdir(self.rcf.get('path.output'))

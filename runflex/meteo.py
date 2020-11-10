@@ -164,7 +164,7 @@ class Meteo:
 
         # Build the AVAILABLE file, line by line:
         lines = ['\n']*3
-        lines.extend([l.strftime(f'%Y%m%d %H%M%S      {self.prefix}%Y%m%d%H         ON DISC\n') for l in sorted(times)])
+        lines.extend([l.strftime(f'%Y%m%d %H%M%S      {self.prefix}%y%m%d%H         ON DISC\n') for l in sorted(times)])
 
         # Write:
         with open(fname, 'w') as fid:
