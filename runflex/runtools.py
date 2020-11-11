@@ -20,6 +20,7 @@ def checkpath(path):
     if not os.path.isdir(path):
         os.makedirs(path)
 
+
 def safecopy(source, dest, count=0, maxcount=5):
     """
     Sometimes if many processes try accessing the same file at the same time, the copy will fail. This ensures that the 
@@ -34,6 +35,7 @@ def safecopy(source, dest, count=0, maxcount=5):
     else :
         logger.error(f"File {source} could not be copied to {dest}")
         raise RuntimeError
+
 
 class Namelists:
     def __init__(self, filename=None, names=None):
@@ -470,6 +472,10 @@ class runFlexpart:
     def run(self):
         os.chdir(self.rcf.get('path.run'))
         subprocess.check_call(['./flexpart.x'])
+        if self.rcf.get('postprocess.lumia', default=False):
+            from runflex.postprocessing import PostProcessor as pp
+            pp(self)
+
 
 def parse_options(args):
     from optparse import OptionParser, OptionGroup
