@@ -473,7 +473,7 @@ class runFlexpart:
         os.chdir(self.rcf.get('path.run'))
         subprocess.check_call(['./flexpart.x'])
         if self.rcf.get('postprocess.lumia', default=False):
-            from runflex.postprocessing import PostProcessor as pp
+            from runflex.postprocessing_lumia import PostProcessor as pp
             pp(self)
 
 
