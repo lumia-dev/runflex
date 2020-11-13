@@ -20,6 +20,7 @@ def checkpath(path):
     if not os.path.isdir(path):
         os.makedirs(path)
 
+
 def safecopy(source, dest, count=0, maxcount=5):
     """
     Sometimes if many processes try accessing the same file at the same time, the copy will fail. This ensures that the 
@@ -34,6 +35,7 @@ def safecopy(source, dest, count=0, maxcount=5):
     else :
         logger.error(f"File {source} could not be copied to {dest}")
         raise RuntimeError
+
 
 class Namelists:
     def __init__(self, filename=None, names=None):
@@ -337,6 +339,15 @@ class runFlexpart:
         os.system('rsync -avh %s/*.f90 %s'%(srcdir,builddir))
         shutil.copy('%s/makefile.%s.%s'%(srcdir,self.rcf.get('machine'),self.rcf.get('compiler')),'%s/Makefile'%builddir)
 
+        # Additional set of source files (typically, those that are specific to a machine or project, and not on the git repository)
+        if self.rcf.haskey('path.src.extras'):
+            extras = os.path.normpath(self.rcf.get('path.src.extras')+'/')
+        os.system('rsync -avh %s/*.f90 %s'%(extras,builddir))
+        try :
+            shutil.copy('%s/makefile.%s.%s'%(extras,self.rcf.get('machine'),self.rcf.get('compiler')),'%s/Makefile'%builddir)
+        except :
+            pass
+
         # make
         prevdir = os.getcwd()
         os.chdir(builddir)
@@ -470,6 +481,10 @@ class runFlexpart:
     def run(self):
         os.chdir(self.rcf.get('path.run'))
         subprocess.check_call(['./flexpart.x'])
+        if self.rcf.get('postprocess.lumia', default=False):
+            from runflex.postprocessing_lumia import PostProcessor as pp
+            pp(self)
+
 
 def parse_options(args):
     from optparse import OptionParser, OptionGroup
