@@ -339,6 +339,15 @@ class runFlexpart:
         os.system('rsync -avh %s/*.f90 %s'%(srcdir,builddir))
         shutil.copy('%s/makefile.%s.%s'%(srcdir,self.rcf.get('machine'),self.rcf.get('compiler')),'%s/Makefile'%builddir)
 
+        # Additional set of source files (typically, those that are specific to a machine or project, and not on the git repository)
+        if self.rcf.haskey('path.src.extras'):
+            extras = os.path.normpath(self.rcf.get('path.src.extras')+'/')
+        os.system('rsync -avh %s/*.f90 %s'%(extras,builddir))
+        try :
+            shutil.copy('%s/makefile.%s.%s'%(extras,self.rcf.get('machine'),self.rcf.get('compiler')),'%s/Makefile'%builddir)
+        except :
+            pass
+
         # make
         prevdir = os.getcwd()
         os.chdir(builddir)
