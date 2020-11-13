@@ -1,0 +1,14 @@
+#include ${machine}.rc
+#include meteo.ea-europe.rc
+
+nreleases.max       : 1000 
+file.command        : ${path.options}/COMMAND
+file.grid           : ${path.options}/OUTGRID
+releases.length     : 10
+releases.kindz      : 1
+releases.altitude_correction : 1
+releases.npart      : 10000
+releases.mass       : ${releases.npart}
+species.number      : 1
+species.1.index     : 24
+run.interactive     : F
