@@ -4,10 +4,11 @@ from netCDF4 import Dataset, chartostring
 from datetime import datetime, timedelta
 from pandas import DataFrame
 from copy import deepcopy
-from numpy import nonzero, array, meshgrid, array_equal, unique
+from numpy import nonzero, array, meshgrid, array_equal, unique, float16, int16, float32
 from multiprocessing import Pool
 import logging
 import glob
+from tqdm import tqdm
 #import ray
 
 logger = logging.getLogger(__name__)
@@ -86,7 +87,6 @@ class LumiaFootprintFile:
         self.obsdb.loc[:, 'status'] = status
         return self.obsdb.status
 
-
 class Concat:
     def __init__(self, db, field_input='inpfile', field_output='outpfile'):
         self.db = db
@@ -105,7 +105,6 @@ class Concat:
         _ = [status.extend(r) for r in p.imap(self._concat, self.files)]
         self.db.loc[:, 'status'] = status
         return array(status)
-
 
 class SingleFootprintFile:
     def __init__(self, **kwargs):
@@ -188,6 +187,8 @@ class SingleFootprintFile:
         self.origin = self.coords['time'].min()-self.dt/2
         self.ncattrs['origin'] = self.origin.strftime('%Y-%m-%d %H:%M:%S')
 
+        self.valid = self.data.shape[0] > 0
+
     def shift_origin(self, new_origin=None):
         """
         Use the beginning of the month as convention for the origin, by default (even if that leads to negative indices)
@@ -236,15 +237,15 @@ class SingleFootprintFile:
                 ds.attrs[k] = v
 
             # Coordinates
-            ds['latitudes'] = self.coords['lats']
-            ds['longitudes'] = self.coords['lons']
-            ds['times'] = [x.timetuple()[:6] for x in self.coords['time']]
+            ds['latitudes'] = self.coords['lats'].astype(float16)
+            ds['longitudes'] = self.coords['lons'].astype(int16)
+            ds['times'] = array([x.timetuple()[:6] for x in self.coords['time']]).astype(int16)
 
             # Data:
-            ds['itim'] = self.data.itim.values
-            ds['ilon'] = self.data.ilon.values
-            ds['ilat'] = self.data.ilat.values
-            ds['value'] = self.data.value.values
+            ds['itim'] = self.data.itim.values.astype(int16)
+            ds['ilon'] = self.data.ilon.values.astype(int16)
+            ds['ilat'] = self.data.ilat.values.astype(int16)
+            ds['value'] = self.data.value.values.astype(float32)
 
 
     def readHDF(self, fname):
@@ -279,9 +280,8 @@ class SingleFootprintFile:
             self.valid = False
 
 class MultiFootprintFile:
-    def __init__(self, filename):
+    def __init__(self, filename, dest):
         self.ncattrs = {}
-        self.footprints = {}
         with Dataset(filename) as ds :
             for attr in ds.ncattrs():
                 self.ncattrs[attr] = getattr(ds, attr)
@@ -315,7 +315,7 @@ class MultiFootprintFile:
             
             # Store release and species info in dictionaries
             releases = DataFrame({
-                'id': array([t.strip().replace("'","") for t in chartostring(ds['RELCOM'][:,1:])]),
+                'id': array([t.strip().replace("'","") for t in chartostring(ds['RELCOM'][:])]),
                 'lat1':ds['RELLAT1'][:],
                 'lat2':ds['RELLAT2'][:],
                 'lon1':ds['RELLNG1'][:],
@@ -334,18 +334,23 @@ class MultiFootprintFile:
 
             # Loop over the individual footprints
             for irl, release in releases.iterrows():
-                self.footprints[release[0]] = SingleFootprintFile(
+            #for irl, release in tqdm(releases.iterrows(), leave=False, total=releases.shape[0]):
+                fp = SingleFootprintFile(
                     ncattrs=self.ncattrs,
                     release=release,
                     coords=coords,
                     data=ds['spec001_mr'][0, irl, ::-1, 0, :, :],
                     specie=specie,
                 )
+                if fp.valid :
+                    fp.shift_origin()
+                    fp.writeHDF(dest)
 
-    def writeHDF(self, dest):
-        for fp in self.footprints.values():
-            fp.shift_origin()
-            fp.writeHDF(dest)
+    #def writeHDF(self, dest):
+    #    for fp in self.footprints.values():
+    #        if fp.valid :
+    #            fp.shift_origin()
+    #            fp.writeHDF(dest)
 
 
 
@@ -369,10 +374,10 @@ def PostProcessor(run):
 
     # For complete safety, compare the creation time of the header and grid_time files. header should be older
     # but not by more than 12 hours 
-    header_age = os.path.getmtime(os.path.join('path', 'header'))
+    header_age = os.path.getmtime(os.path.join(path, 'header'))
     output_age = os.path.getmtime(outfile)
     if 0 < (output_age-header_age)/3600 < 12:
-        MultiFootprintFile(output_age).writeHDF(dest)
+        MultiFootprintFile(output_age, dest)#.writeHDF(dest)
     elif output_age < header_age:
         logging.warn(f"header older than grid_time file {outfile}. The simulation probably crashed: skipping post-processing")
     else :
