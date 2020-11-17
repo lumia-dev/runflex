@@ -9,11 +9,9 @@ from multiprocessing import Pool
 import logging
 import glob
 from tqdm import tqdm
-#import ray
 
 logger = logging.getLogger(__name__)
 
-#@ray.remote
 class LumiaFootprintFile:
     def __init__(self, filename, obsdb):
         self.filename = filename
@@ -21,6 +19,7 @@ class LumiaFootprintFile:
         tmin = self.obsdb.time.min()
         self.origin = datetime(tmin.year, tmin.month, 1)
         self.empty = self.init(filename)
+        self.global_attrs = {}
 
     def init(self, filename):
         empty = True
@@ -58,6 +57,17 @@ class LumiaFootprintFile:
         # Make sure that all data is on the same time coordinates
         fp.shift_origin(new_origin=self.origin)
 
+        # Store global attributes :
+        release_attrs = {}
+        for attr in fp.ncattrs:
+            if attr.startswith('release_'):
+                release_attrs[attr] = fp.ncattrs[attr]
+            elif not attr in self.global_attrs :
+                self.global_attrs[attr] = fp.ncattrs[attr]
+            elif fp.ncattrs[attr] != self.global_attrs[attr]:
+                release_attrs[attr] = fp.ncattrs[attr]
+                
+
         # Write obs
         with File(self.filename, 'a') as ds :
             try :
@@ -75,12 +85,15 @@ class LumiaFootprintFile:
             gr['ilats'] = fp.data.ilat.values
             gr['itims'] = fp.data.itim.values
             gr['sensi'] = fp.data.value.values
-            for attr in fp.ncattrs:
-                gr.attrs[attr] = fp.ncattrs[attr]
+            for attr in release_attrs:
+                gr.attrs[attr] = release_attrs[attr]
+                #gr.attrs[attr] = fp.ncattrs[attr]
+            for attr in self.global_attrs:
+                ds.attrs[attr] = self.global_attrs[attr]
         return 0
 
     def concat(self, field='inpfile'):
-        print(f"Adding data to {self.filename}")
+        #print(f"Adding data to {self.filename}")
         status = []
         for obs in self.obsdb.itertuples():
             status.append(self.add(obs.obsid, getattr(obs, field)))
@@ -102,7 +115,7 @@ class Concat:
     def run(self):
         p = Pool()
         status = []
-        _ = [status.extend(r) for r in p.imap(self._concat, self.files)]
+        _ = [status.extend(r) for r in tqdm(p.imap(self._concat, self.files), total=len(self.files))]
         self.db.loc[:, 'status'] = status
         return array(status)
 
@@ -279,6 +292,97 @@ class SingleFootprintFile:
         except OSError :
             self.valid = False
 
+class MfpFile:
+    def __init__(self, filename):
+        self.filename = filename
+        self.ncattrs = {}
+        self.coords = {}
+        self.dt = None
+        self.releases = None
+        self.specie = {}
+
+    def load_metadata(self):
+        with Dataset(self.filename) as ds :
+            # Load attributes
+            for attr in ds.ncattrs():
+                self.ncattrs[attr] = getattr(ds, attr)
+
+            # Load coordinates
+            self.dt = timedelta(seconds=float(ds['time'][0]))
+            self.t_start = datetime.strptime(self.ncattrs['ibdate']+self.ncattrs['ibtime'], '%Y%m%d%H%M%S')
+            self.t_end = datetime.strptime(self.ncattrs['iedate']+self.ncattrs['ietime'], '%Y%m%d%H%M%S')
+            self.coords['time'] = self._transform_time(ds['time'][:])
+            self.coords['lats'] = ds['latitude'][:]
+            self.coords['lons'] = ds['longitude'][:]
+            self._gen_coordinates()
+
+            # Load release info:
+            self.releases = DataFrame({
+                'id': array([t.strip() for t in chartostring(ds['RELCOM'][:])]),
+                'lat1':ds['RELLAT1'][:],
+                'lat2':ds['RELLAT2'][:],
+                'lon1':ds['RELLNG1'][:],
+                'lon2':ds['RELLNG2'][:],
+                'z1':ds['RELZZ1'][:],
+                'z2':ds['RELZZ2'][:],
+                'kindz':ds['RELKINDZ'][:],
+                'start':[self.t_end+timedelta(seconds=float(tt)) for tt in ds['RELSTART'][:]],
+                'end':[self.t_end+timedelta(seconds=float(tt)) for tt in ds['RELEND'][:]],
+                'npart':ds['RELPART'][:],
+            })
+
+            # Load species info:
+            for attr in ds['spec001_mr'].ncattrs() :
+                self.specie[attr] = getattr(ds['spec001_mr'], attr)
+
+    def __iter__(self):
+        """
+        Iterate over the individual footprints and return "SingleFootprintFile" instances,
+        which can then be written to a file
+        """
+        with Dataset(self.filename) as ds :
+            for irl, release in self.releases.iterrows():
+                fp = SingleFootprintFile(
+                    ncattrs=self.ncattrs,
+                    release=release,
+                    coords=self.coords,
+                    data=ds['spec001_mr'][0, irl, ::-1, 0, :, :],
+                    specie=self.specie,
+                )
+                if fp.valid:
+                    fp.shift_origin()
+                yield fp
+
+    def _transform_time(self, dtimes):
+        # 1st, make sure that the simulation was backward in time
+        assert self.dt.total_seconds() < 0
+        
+        # Convert the "dtimes" to timedelta
+        dtimes = array([timedelta(seconds=float(dt)) for dt in dtimes])
+
+        # Add to the reference time. We "remove" self.dt/2 at the end to get to the middle of the time step
+        # since self.dt is negative, this advances the times array by half a time step
+        times = self.t_end + dtimes - self.dt/2
+
+        # Finally, we revert the time axis to have it in increasing order
+        return times[::-1]
+
+    def _gen_coordinates(self):
+        """
+        Just generate a grid of coordinates, based on the current coordinate arrays:
+        """
+        nt = len(self.coords['time'])
+        nlat = len(self.coords['lats'])
+        nlon = len(self.coords['lons'])
+        self.coords['grid'] = meshgrid(range(len(nt)), range(len(nlat)), range(len(nlon)), indexing='ij')
+
+
+def split_gridtime(filename, dest):
+    fpf = MfpFile(filename)
+    fpf.load_metadata()
+    for fp in fpf:
+        fp.writeHDF(dest)
+
 class MultiFootprintFile:
     def __init__(self, filename, dest):
         self.ncattrs = {}
@@ -315,7 +419,7 @@ class MultiFootprintFile:
             
             # Store release and species info in dictionaries
             releases = DataFrame({
-                'id': array([t.strip().replace("'","") for t in chartostring(ds['RELCOM'][:])]),
+                'id': array([t.strip() for t in chartostring(ds['RELCOM'][:])]),
                 'lat1':ds['RELLAT1'][:],
                 'lat2':ds['RELLAT2'][:],
                 'lon1':ds['RELLNG1'][:],
