@@ -152,6 +152,10 @@ class Meteo:
                     fails.append(file)
 
         if fails :
+            msg = "Not all meteo files could be retrieved:\n"
+            for fail in fails:
+                msg += f"   {fail}\n"
+            logger.error(msg)
             raise RuntimeError
 
     def genAvailableFile(self, fname):
