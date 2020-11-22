@@ -4,9 +4,7 @@ import os
 import shutil
 import time
 from runflex.logging_tools import logger
-import logging
-from pandas import DataFrame
-from numpy import inf, floor
+from numpy import floor, isinf
 from datetime import datetime, timedelta
 import subprocess
 from runflex import tqdm
@@ -15,6 +13,7 @@ import runflex.rctools as rctools
 import runflex.meteo as meteo
 
 #logger = logging.getLogger(__name__)
+
 
 def checkpath(path):
     if not os.path.isdir(path):
@@ -143,7 +142,8 @@ class Command:
             while end < self.end:
                 end += dt
         else :
-            import pdb; pdb.set_trace()
+            logger.error("LOUTAVER longer than 24 hours is not implemented in runflex (but it should be doable)")
+            raise NotImplementedError
         self.start = start
         self.end = end
 
@@ -183,9 +183,9 @@ class Observations:
         self.observations = obslist
         self.observations.loc[:, 'name'] = ['%s.%im.%s'%(o.code.lower(),o.height,o.time.strftime('%Y%m%d%H%M%S')) for o in self.observations.itertuples()]
         self.observations.set_index('name', inplace=True)
-        if not 'kindz' in self.observations.columns :
+        if 'kindz' not in self.observations.columns :
             self.observations.loc[:, 'kindz'] = self.rcf.get('releases.kindz')
-        if not 'release_height' in self.observations.columns :
+        if 'release_height' not in self.observations.columns :
             # Plain sites
             self.observations.loc[self.observations.kindz == 1, 'release_height'] = self.observations.loc[:, 'height']
 
@@ -201,8 +201,8 @@ class Observations:
 
     def gen_RELEASES(self, rundir):
         # Header
-        nspec     = self.rcf.get('species.number')
-        specs     = []
+        nspec = self.rcf.get('species.number')
+        specs = []
         for ispec in range(nspec):
             specs.append(self.rcf.get(f'species.{ispec+1}.index'))
 
@@ -238,9 +238,9 @@ class Observations:
         """
 
         # If we don't want to split
-        if nobsmax is None :
+        if isinf(nobsmax):
             fname = os.path.join(path, 'observations.hdf')
-            self.observations.to_hdf(fname)
+            self.observations.to_hdf(fname, 'obsdb')
             return [fname]
 
         # 1st, make sure the observations are sorted by time (so that jobs will contain as much as possible data in similart time interval)
@@ -276,7 +276,7 @@ class Observations:
             db = db.loc[db.time <= db.iloc[0].time + timedelta(maxdt),:]
 
             # Write the database slice to a file accessible by all nodes:
-            fid, fname = tempfile.mkstemp(dir=path, prefix = 'observations.', suffix = '.hdf')
+            fid, fname = tempfile.mkstemp(dir=path, prefix='observations.', suffix='.hdf')
 
             # Open and close the file descriptor to avoid "too many open files" error
             os.fdopen(fid).close()
@@ -303,7 +303,6 @@ class runFlexpart:
             prefix = self.rcf.get('meteo.prefix'),
             tres=timedelta(self.rcf.get('meteo.interv')/24.)
         )
-
 
     def setupObs(self, obslist):
         self.observations.setup(obslist)
@@ -345,7 +344,7 @@ class runFlexpart:
         os.system('rsync -avh %s/*.f90 %s'%(extras,builddir))
         try :
             shutil.copy('%s/makefile.%s.%s'%(extras,self.rcf.get('machine'),self.rcf.get('compiler')),'%s/Makefile'%builddir)
-        except :
+        except FileNotFoundError :
             pass
 
         # make
@@ -380,6 +379,7 @@ class runFlexpart:
     def distribute(self, nobsmax=None, maxdt=7):
         # Determine the size of the flexpart runs (nobsmax can be taken taken from rc-file, provided as argument,
         # or otherwise a default value of 50 obs/run is taken
+        # Set nobsmax to inf to avoid splitting
         if nobsmax is None :
             nobsmax = self.rcf.get('nreleases.max', default=50)
 
@@ -487,7 +487,7 @@ class runFlexpart:
 
 
 def parse_options(args):
-    from optparse import OptionParser, OptionGroup
+    from optparse import OptionParser
     p = OptionParser(usage='%prog [options] rc_file')
     p.add_option('-r', '--rc', dest='rcf')
     p.add_option('-d', '--db', dest='obs')
