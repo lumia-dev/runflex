@@ -1,0 +1,7 @@
+file.command                 : ${path.options}/COMMAND_lumia
+releases.altitude_correction : 1
+releases.npart               : 10000
+releases.mass                : ${releases.npart}
+species.number               : 1
+species.1.index              : 24
+run.interactive              : F
