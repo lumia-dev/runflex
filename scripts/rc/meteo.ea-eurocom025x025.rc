@@ -1,0 +1,4 @@
+meteo.prefix           : EA
+meteo.interv           : 1
+meteo.archive          : rclone:flexpart:meteo/${meteogrid}
+meteogrid              : ea.eurocom025x025

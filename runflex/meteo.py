@@ -3,7 +3,7 @@
 import os
 import glob
 import logging
-import runflex.logging_tools
+from runflex.logging_tools import logging
 from time import sleep
 import subprocess
 from datetime import datetime, timedelta
@@ -11,6 +11,7 @@ import shutil
 from numpy import array
 
 logger = logging.getLogger(__name__)
+
 
 class LocalArchive:
     def __init__(self, key):
@@ -56,7 +57,7 @@ class RcloneArchive:
         path = os.path.join(self.path, str(date.year), str(date.month))
 
         # Get the list of files in the rclone repo, in the same folder (only if we are in a new folder)
-        if not path in self.remote_structure :
+        if path not in self.remote_structure :
             logger.info("Retrieving list of files in rclone folder {self.remote:path})")
             self.remote_structure[path] = subprocess.check_output(['rclone', 'lsf', f'{self.remote}:{path}'], universal_newlines=True).split('\n')
         
@@ -97,6 +98,7 @@ class Archive:
             logger.error(f"Un-recognized meteo archive: {key}")
             raise RuntimeError
         self.get = self.archive.get
+
 
 class Meteo:
     def __init__(self, path, archive=None, prefix='EN', tres=None, minspace=None, minage=None):
@@ -152,6 +154,10 @@ class Meteo:
                     fails.append(file)
 
         if fails :
+            msg = "Not all meteo files could be retrieved:\n"
+            for fail in fails:
+                msg += f"   {fail}\n"
+            logger.error(msg)
             raise RuntimeError
 
     def genAvailableFile(self, fname):

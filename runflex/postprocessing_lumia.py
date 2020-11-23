@@ -1,4 +1,5 @@
 import os
+import glob
 from h5py import File
 from netCDF4 import Dataset, chartostring
 from datetime import datetime, timedelta
@@ -7,10 +8,10 @@ from copy import deepcopy
 from numpy import nonzero, array, meshgrid, array_equal, unique, float16, int16, float32
 from multiprocessing import Pool
 import logging
-import glob
 from tqdm import tqdm
 
 logger = logging.getLogger(__name__)
+
 
 class LumiaFootprintFile:
     def __init__(self, filename, obsdb):
@@ -18,17 +19,19 @@ class LumiaFootprintFile:
         self.obsdb = obsdb
         tmin = self.obsdb.time.min()
         self.origin = datetime(tmin.year, tmin.month, 1)
-        self.empty = self.init(filename)
         self.global_attrs = {}
+        self.empty = self.init()
 
-    def init(self, filename):
+    def init(self):
         empty = True
-        with File(filename, 'a') as ds:
+        with File(self.filename, 'a') as ds:
             if 'latitudes' in ds :
                 self.lats = ds['latitudes'][:]
                 self.lons = ds['longitudes'][:]
                 self.tres = ds.attrs['tres']
                 self.origin = datetime.strptime(ds.attrs['start'], '%Y-%m-%d %H:%M:%S')
+                for attr in ds.attrs:
+                    self.global_attrs[attr] = ds.attrs[attr]
                 empty = False
         return empty
 
@@ -62,11 +65,10 @@ class LumiaFootprintFile:
         for attr in fp.ncattrs:
             if attr.startswith('release_'):
                 release_attrs[attr] = fp.ncattrs[attr]
-            elif not attr in self.global_attrs :
+            elif attr not in self.global_attrs :
                 self.global_attrs[attr] = fp.ncattrs[attr]
             elif fp.ncattrs[attr] != self.global_attrs[attr]:
                 release_attrs[attr] = fp.ncattrs[attr]
-                
 
         # Write obs
         with File(self.filename, 'a') as ds :
@@ -100,6 +102,15 @@ class LumiaFootprintFile:
         self.obsdb.loc[:, 'status'] = status
         return self.obsdb.status
 
+
+class LFPF(LumiaFootprintFile):
+    def __init__(self, filename, origin):
+        self.filename = filename
+        self.origin = origin
+        self.global_attrs = {}
+        self.empty = self.init()
+
+
 class Concat:
     def __init__(self, db, field_input='inpfile', field_output='outpfile'):
         self.db = db
@@ -118,6 +129,41 @@ class Concat:
         _ = [status.extend(r) for r in tqdm(p.imap(self._concat, self.files), total=len(self.files))]
         self.db.loc[:, 'status'] = status
         return array(status)
+
+
+def Concat2(path):
+    """
+    Same as Concat, except that it doesn't rely on a user database:
+    - the grouping is done following the site names, one file/site/month
+    - the obsids are generated automatically:
+    """
+    # Get the list of files to concatenate
+    flist = glob.glob(os.path.join(path, '*.*.??????????????.hdf'))
+    flist = array([os.path.basename(f) for f in flist])
+
+    # Guess their sitename and times:
+    sitemonth = array([f"{a}.{b}.{c[:6]}" for (a,b,c,d) in [f.split('.') for f in flist]])
+    obsdates = array([datetime.strptime(c.split('.')[2], '%Y%m%d%H%M%S') for c in flist])
+
+    # Loop over the individual files:
+    for sm in unique(sitemonth):
+
+        # Create an output file with the month as origin
+        site, height, month = sm.split('.')
+        month = datetime.strptime(month, '%Y%m')
+        outfile = os.path.join(path, month.strftime(f"{site}.{height}.%Y-%m.hdf"))
+        out = LFPF(outfile, month)
+
+        # Select the list of files to add, and create their obsids:
+        files = flist[sitemonth == sm]
+        dates = obsdates[sitemonth == sm]
+        obsid = [f"{site}.{height}.{d.strftime('%Y%m%d-%H%M%S')}" for d in dates]
+        files = [os.path.join(path, f) for f in files]
+
+        # Add the files to the output file:
+        for (fid, oid) in zip(files, obsid):
+            out.add(oid, fid)
+
 
 class SingleFootprintFile:
     def __init__(self, **kwargs):
@@ -198,7 +244,7 @@ class SingleFootprintFile:
         self.ncattrs['tres'] = self.dt.total_seconds()
 
         self.origin = self.coords['time'].min()-self.dt/2
-        self.ncattrs['origin'] = self.origin.strftime('%Y-%m-%d %H:%M:%S')
+        #self.ncattrs['origin'] = self.origin.strftime('%Y-%m-%d %H:%M:%S')
 
         self.valid = self.data.shape[0] > 0
 
@@ -208,10 +254,10 @@ class SingleFootprintFile:
         """
         # Set the new time origin, if it is not provided as argument
         if new_origin is None:
-            new_origin = datetime(self.release_start.year, self.release_start.month, 1)#+self.dt/2
+            new_origin = datetime(self.release_start.year, self.release_start.month, 1) #+self.dt/2
 
         # Determine the number of time intervals there is between the two origins
-        nshift = (self.origin-new_origin).total_seconds()/self.dt.total_seconds()
+        nshift = (self.origin-new_origin)/self.dt
         assert nshift-int(nshift) == 0
         nshift = int(nshift)
 
@@ -222,27 +268,17 @@ class SingleFootprintFile:
         self.origin = new_origin
 
         # Construct the new time axis:
-        try :
-            self.coords['time'] = self.itime_to_time(range(0, self.data.itim.max()))
-        except :
-            print(self.data.itim.max())
-            print(self.release_id)
-            print(self.data.itim)
-            print(self.filename)
-            raise RuntimeError
-
-        # newtaxis = []
-        # tt = new_t0
-        # while tt <= self.coords['time'].max():
-        #     newtaxis.append(tt)
-        #     tt+=self.dt
-        # self.coords['time'] = array(newtaxis)
+        self.coords['time'] = self.itime_to_time(range(self.data.itim.min(), self.data.itim.max()))
 
     def itime_to_time(self, itimes):
         return array([self.origin+(n+0.5)*self.dt for n in itimes])  # 1st time element should be half interval after the origin
         
     def writeHDF(self, path):
         fname = os.path.join(path, f'{self.release_id}.hdf')
+
+        # Modified attributes:
+        self.ncattrs['origin'] = self.origin.strftime('%Y-%m-%d %H:%M:%S')
+
         with File(fname, 'w') as ds :
 
             # netCDF attributes
@@ -259,7 +295,6 @@ class SingleFootprintFile:
             ds['ilon'] = self.data.ilon.values.astype(int16)
             ds['ilat'] = self.data.ilat.values.astype(int16)
             ds['value'] = self.data.value.values.astype(float32)
-
 
     def readHDF(self, fname):
         self.filename = fname
@@ -292,6 +327,7 @@ class SingleFootprintFile:
         except OSError :
             self.valid = False
 
+
 class MfpFile:
     def __init__(self, filename):
         self.filename = filename
@@ -300,6 +336,8 @@ class MfpFile:
         self.dt = None
         self.releases = None
         self.specie = {}
+        self.load_metadata()
+        self.corrfac = 1.
 
     def load_metadata(self):
         with Dataset(self.filename) as ds :
@@ -314,6 +352,11 @@ class MfpFile:
             self.coords['time'] = self._transform_time(ds['time'][:])
             self.coords['lats'] = ds['latitude'][:]
             self.coords['lons'] = ds['longitude'][:]
+            surface_layer_depth = ds['height'][:]
+            if len(surface_layer_depth) > 1 :
+                logger.error("A one-layer footprint is expected by this script")
+                raise NotImplementedError
+            self.coorfac = 28.97/1000./surface_layer_depth[0]   # m3.s/kg to m2.s/mol
             self._gen_coordinates()
 
             # Load release info:
@@ -341,12 +384,13 @@ class MfpFile:
         which can then be written to a file
         """
         with Dataset(self.filename) as ds :
+            # Shift the order of the time dimension, to match with the coordinates
             for irl, release in self.releases.iterrows():
                 fp = SingleFootprintFile(
                     ncattrs=self.ncattrs,
                     release=release,
                     coords=self.coords,
-                    data=ds['spec001_mr'][0, irl, ::-1, 0, :, :],
+                    data=ds['spec001_mr'][0, irl, :, 0, :, :][::-1,:,:]*self.corrfac,
                     specie=self.specie,
                 )
                 if fp.valid:
@@ -374,88 +418,13 @@ class MfpFile:
         nt = len(self.coords['time'])
         nlat = len(self.coords['lats'])
         nlon = len(self.coords['lons'])
-        self.coords['grid'] = meshgrid(range(len(nt)), range(len(nlat)), range(len(nlon)), indexing='ij')
+        self.coords['grid'] = [g.reshape(-1) for g in meshgrid(range(nt), range(nlat), range(nlon), indexing='ij')]
 
 
 def split_gridtime(filename, dest):
     fpf = MfpFile(filename)
-    fpf.load_metadata()
     for fp in fpf:
         fp.writeHDF(dest)
-
-class MultiFootprintFile:
-    def __init__(self, filename, dest):
-        self.ncattrs = {}
-        with Dataset(filename) as ds :
-            for attr in ds.ncattrs():
-                self.ncattrs[attr] = getattr(ds, attr)
-                
-            # Convert time from model units (i.e. seconds from the simulation end) to datetime
-            dt = timedelta(seconds=float(ds['time'][0]))
-            if dt.total_seconds() < 0 :
-                ref = datetime.strptime(self.ncattrs['iedate']+self.ncattrs['ietime'], '%Y%m%d%H%M%S')
-            else :
-                logger.error("The footprint is not backward ...")
-                raise NotImplementedError
-                
-            # Generate the coordinate axis
-            times = array([ref+timedelta(seconds=float(tt)) for tt in ds['time'][:]])-dt/2
-            lats = ds['latitude'][:]
-            lons = ds['longitude'][:]
-            
-            # Reverse the time axis:
-            times = times[::-1]
-            
-            # Generate a grid of coordinates
-            grid = meshgrid(range(len(times)), range(len(lats)), range(len(lons)), indexing='ij')
-            
-            # Save all the coordinates in a dictionary
-            coords = {
-                'time': times,
-                'lons': lons,
-                'lats': lats,
-                'grid': [g.reshape(-1) for g in grid]
-            }
-            
-            # Store release and species info in dictionaries
-            releases = DataFrame({
-                'id': array([t.strip() for t in chartostring(ds['RELCOM'][:])]),
-                'lat1':ds['RELLAT1'][:],
-                'lat2':ds['RELLAT2'][:],
-                'lon1':ds['RELLNG1'][:],
-                'lon2':ds['RELLNG2'][:],
-                'z1':ds['RELZZ1'][:],
-                'z2':ds['RELZZ2'][:],
-                'kindz':ds['RELKINDZ'][:],
-                'start':[ref+timedelta(seconds=float(tt)) for tt in ds['RELSTART'][:]],
-                'end':[ref+timedelta(seconds=float(tt)) for tt in ds['RELEND'][:]],
-                'npart':ds['RELPART'][:],
-            })
-
-            specie = {}
-            for attr in ds['spec001_mr'].ncattrs() :
-                specie[attr] = getattr(ds['spec001_mr'], attr)
-
-            # Loop over the individual footprints
-            for irl, release in releases.iterrows():
-            #for irl, release in tqdm(releases.iterrows(), leave=False, total=releases.shape[0]):
-                fp = SingleFootprintFile(
-                    ncattrs=self.ncattrs,
-                    release=release,
-                    coords=coords,
-                    data=ds['spec001_mr'][0, irl, ::-1, 0, :, :],
-                    specie=specie,
-                )
-                if fp.valid :
-                    fp.shift_origin()
-                    fp.writeHDF(dest)
-
-    #def writeHDF(self, dest):
-    #    for fp in self.footprints.values():
-    #        if fp.valid :
-    #            fp.shift_origin()
-    #            fp.writeHDF(dest)
-
 
 
 def PostProcessor(run):
@@ -481,9 +450,8 @@ def PostProcessor(run):
     header_age = os.path.getmtime(os.path.join(path, 'header'))
     output_age = os.path.getmtime(outfile)
     if 0 < (output_age-header_age)/3600 < 12:
-        MultiFootprintFile(output_age, dest)#.writeHDF(dest)
+        split_gridtime(outfile, dest)
     elif output_age < header_age:
         logging.warn(f"header older than grid_time file {outfile}. The simulation probably crashed: skipping post-processing")
     else :
         logging.warn(f"header suspiciously old compared to the model output in {path} ({(output_age-header_age)/3600} hours). Skipping the post-processing.")
-        

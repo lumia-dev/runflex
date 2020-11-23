@@ -1,0 +1,43 @@
+! ========================================================================================
+! Directories
+!  - user-specific, but set automatically according to environment variables:
+path.lib            : /home/ubuntu/flexpart/runflex 
+path.scratch_global : /scratch/flexpart
+
+! - user specific, adjust according to your needs
+path.options        : ${path.lib}/scripts/options
+path.species        : ${path.lib}/scripts/species 
+path.output         : /scratch/flexpart/tests/
+
+! - common to all users (normally ...)
+path.meteo          : /scratch/flexpart/meteo
+landuse.file        : ${path.lib}/data/IGBP_int1.dat
+landuse.z0.file     : ${path.lib}/data/surfdata.t
+surfdepo.file       : ${path.lib}/data/surfdepo.t
+
+! ========================================================================================
+! FLEXPART build
+path.build          : /scratch/flexpart/build/${compiler}
+path.src            : ${path.lib}/flexpart10.4
+path.src.extras     : ${path.lib}/../flexpart10.4
+machine             : ssc 
+compiler            : gfortran
+
+! ========================================================================================
+! runflex options : how many releases are grouped in one flexpart run, how many flexpart 
+!    runs are launched in parallel, where are the run files copied to (path.run, ideally
+!    on the local hard drive of the node), and where are the logs copied to (path.logs)
+path.run            : /scratch/flexpart/run/
+path.logs           : /scratch/flexpart/logs
+ntasks.parallell    : 8 
+run.tsp             : T
+
+! ========================================================================================
+! Meteo
+meteo.archive          : rclone:flexpart:meteo/${meteogrid}
+meteo.cleanup          : T
+meteo.cleanup.minspace : 50   ! Minimum space that should be on disk (Gb)
+meteo.cleanup.minage   : 12   ! Minimum access age of the meteo files to be deleted (hours)
+
+! ========================================================================================
+nreleases.max       : 1000
