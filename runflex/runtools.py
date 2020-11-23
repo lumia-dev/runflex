@@ -238,7 +238,7 @@ class Observations:
         """
 
         # If we don't want to split
-        if isinf(nobsmax):
+        if isinf(nobsmax) or nobsmax <= 0:
             fname = os.path.join(path, 'observations.hdf')
             self.observations.to_hdf(fname, 'obsdb')
             return [fname]
