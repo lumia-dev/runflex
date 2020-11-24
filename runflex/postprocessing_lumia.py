@@ -131,38 +131,78 @@ class Concat:
         return array(status)
 
 
-def Concat2(path):
+class Concat2:
     """
     Same as Concat, except that it doesn't rely on a user database:
     - the grouping is done following the site names, one file/site/month
     - the obsids are generated automatically:
     """
-    # Get the list of files to concatenate
-    flist = glob.glob(os.path.join(path, '*.*.??????????????.hdf'))
-    flist = array([os.path.basename(f) for f in flist])
+    def __init__(self, path, ncpus=1):
+        self.path = path
+        
+        # Get the list of files to concatenate:
+        flist = glob.glob(os.path.join(path, '*.*.??????????????.hdf'))
+        self.flist = array([os.path.basename(f) for f in flist])
 
-    # Guess their sitename and times:
-    sitemonth = array([f"{a}.{b}.{c[:6]}" for (a,b,c,d) in [f.split('.') for f in flist]])
-    obsdates = array([datetime.strptime(c.split('.')[2], '%Y%m%d%H%M%S') for c in flist])
+        # Guess their sitename and times:
+        self.sitemonth = array([f"{a}.{b}.{c[:6]}" for (a,b,c,d) in [f.split('.') for f in flist]])
+        self.obsdates = array([datetime.strptime(c.split('.')[2], '%Y%m%d%H%M%S') for c in flist])
 
-    # Loop over the individual files:
-    for sm in unique(sitemonth):
+        # Loop over the individual files:
+        p = Pool(processes=ncpus)
+        _ = [r for r in tqdm(p.imap(self.worker, self.sitemonth), total=len(self.sitemonth))]
+
+    def worker(self, sm):
 
         # Create an output file with the month as origin
         site, height, month = sm.split('.')
         month = datetime.strptime(month, '%Y%m')
-        outfile = os.path.join(path, month.strftime(f"{site}.{height}.%Y-%m.hdf"))
+        outfile = os.path.join(self.path, month.strftime(f"{site}.{height}.%Y-%m.hdf"))
         out = LFPF(outfile, month)
 
         # Select the list of files to add, and create their obsids:
-        files = flist[sitemonth == sm]
-        dates = obsdates[sitemonth == sm]
+        files = self.flist[self.sitemonth == sm]
+        dates = self.obsdates[self.sitemonth == sm]
         obsid = [f"{site}.{height}.{d.strftime('%Y%m%d-%H%M%S')}" for d in dates]
-        files = [os.path.join(path, f) for f in files]
+        files = [os.path.join(self.path, f) for f in files]
 
         # Add the files to the output file:
         for (fid, oid) in zip(files, obsid):
             out.add(oid, fid)
+
+
+# def Concat2(path):
+#     """
+#     Same as Concat, except that it doesn't rely on a user database:
+#     - the grouping is done following the site names, one file/site/month
+#     - the obsids are generated automatically:
+#     """
+#     # Get the list of files to concatenate
+#     flist = glob.glob(os.path.join(path, '*.*.??????????????.hdf'))
+#     flist = array([os.path.basename(f) for f in flist])
+
+#     # Guess their sitename and times:
+#     sitemonth = array([f"{a}.{b}.{c[:6]}" for (a,b,c,d) in [f.split('.') for f in flist]])
+#     obsdates = array([datetime.strptime(c.split('.')[2], '%Y%m%d%H%M%S') for c in flist])
+
+#     # Loop over the individual files:
+#     for sm in unique(sitemonth):
+
+#         # Create an output file with the month as origin
+#         site, height, month = sm.split('.')
+#         month = datetime.strptime(month, '%Y%m')
+#         outfile = os.path.join(path, month.strftime(f"{site}.{height}.%Y-%m.hdf"))
+#         out = LFPF(outfile, month)
+
+#         # Select the list of files to add, and create their obsids:
+#         files = flist[sitemonth == sm]
+#         dates = obsdates[sitemonth == sm]
+#         obsid = [f"{site}.{height}.{d.strftime('%Y%m%d-%H%M%S')}" for d in dates]
+#         files = [os.path.join(path, f) for f in files]
+
+#         # Add the files to the output file:
+#         for (fid, oid) in zip(files, obsid):
+#             out.add(oid, fid)
 
 
 class SingleFootprintFile:
@@ -296,6 +336,32 @@ class SingleFootprintFile:
             ds['ilat'] = self.data.ilat.values.astype(int16)
             ds['value'] = self.data.value.values.astype(float32)
 
+    def to_gridTime(self):
+        from numpy import zeros
+        """
+        This is a diagnostic method, written to check that we can correctly reconstruct the original "grid_time" files
+        Here we completely neglect the netCDF attributes and focus on the "spec001_mr" array
+        """
+        # Reconstruct the original time coordinate: 
+        etime = datetime.strptime(self.ncattrs['iedate']+self.ncattrs['ietime'], '%Y%m%d%H%M%S')
+        btime = datetime.strptime(self.ncattrs['ibdate']+self.ncattrs['ibtime'], '%Y%m%d%H%M%S')
+        nt = int((etime-btime)/self.dt)
+        dt = -int(self.dt.total_seconds())
+
+        times = range(dt, (nt+1)*dt, dt)
+
+        # Reconstruct the FLEXPART time indices:
+        times_mid = self.itime_to_time(self.data.itim.values)   # Center of the time steps
+        times_beg = [t-self.dt/2 for t in times_mid]
+        tt = [(t-etime).total_seconds() for t in times_beg]
+        itimes = [times.index(int(t)) for t in tt]
+
+        # Create the output array
+        data_out = zeros((nt, len(self.coords['lats']), len(self.coords['lons'])))
+        for it, ilat, ilon, value in zip(itimes, self.data.ilat.values, self.data.ilon.values, self.data.value.values):
+            data_out[it, ilat, ilon] = value
+        return {'data':data_out, 'times':times, 'lats':self.coords['lats'], 'lons':self.coords['lons']}
+
     def readHDF(self, fname):
         self.filename = fname
         try :
@@ -378,6 +444,9 @@ class MfpFile:
             for attr in ds['spec001_mr'].ncattrs() :
                 self.specie[attr] = getattr(ds['spec001_mr'], attr)
 
+            # Add the original filename to ncattrs, for tracability:
+            self.ncattrs['filename'] = os.path.abspath(self.filename)
+
     def __iter__(self):
         """
         Iterate over the individual footprints and return "SingleFootprintFile" instances,
@@ -410,6 +479,20 @@ class MfpFile:
 
         # Finally, we revert the time axis to have it in increasing order
         return times[::-1]
+
+    def check(self, path):
+        """
+        Check that the reconstructed footprints are correct
+        """
+        with Dataset(self.filename) as ds :
+            for irl, release in tqdm(self.releases.iterrows(), total=len(self.releases)):
+                fp = SingleFootprintFile(filename=os.path.join(path, f'{release.id}.hdf'))
+                test = fp.to_gridTime()
+                if array_equal(ds['spec001_mr'][0, irl, :, 0, :, :], test['data']):
+                    logger.info(f"Release {release.id} successfully reconstructed!")
+                else :
+                    logger.warn(f"Reconstruction of release {release.id} failed ...")
+            return test
 
     def _gen_coordinates(self):
         """
