@@ -123,8 +123,8 @@ class Concat:
     def _concat(self, fp):
         return fp.concat(field=self.field_input)
 
-    def run(self):
-        p = Pool()
+    def run(self, ncpus=None):
+        p = Pool(processes=ncpus)
         status = []
         _ = [status.extend(r) for r in tqdm(p.imap(self._concat, self.files), total=len(self.files))]
         self.db.loc[:, 'status'] = status

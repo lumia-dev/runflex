@@ -3,7 +3,7 @@ setup.py
 runflex/__init__.py
 runflex/logging_tools.py
 runflex/meteo.py
-runflex/postprocessing.py
+runflex/postprocessing_lumia.py
 runflex/rctools.py
 runflex/runtools.py
 runflex.egg-info/PKG-INFO

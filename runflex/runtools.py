@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 
+import sys
 import os
 import shutil
 import time
@@ -174,15 +175,16 @@ class Observations:
         self.rcf = rcf
         self.observations = Observations
 
-    def setup(self, obslist):
+    def setup(self, obslist, obsid='obsid'):
         """
         Store the observation dataFrame in an attribute, and create an index
         The dataFrame must have columns 'lon', 'lat', 'alt', 'time', 'code' and 'height'
         The index is created as 'code.height.time' and is used to define the footprint file names
         """
         self.observations = obslist
-        self.observations.loc[:, 'name'] = ['%s.%im.%s'%(o.code.lower(),o.height,o.time.strftime('%Y%m%d%H%M%S')) for o in self.observations.itertuples()]
-        self.observations.set_index('name', inplace=True)
+        if obsid not in self.observations.columns:
+            self.observations.loc[:, obsid] = ['%s.%im.%s'%(o.code.lower(),o.height,o.time.strftime('%Y%m%d%H%M%S')) for o in self.observations.itertuples()]
+        self.observations.set_index(obsid, inplace=True)
         if 'kindz' not in self.observations.columns :
             self.observations.loc[:, 'kindz'] = self.rcf.get('releases.kindz')
         if 'release_height' not in self.observations.columns :
@@ -259,7 +261,7 @@ class Observations:
             if (nobstot%nchunks > 0):
                 nchunks += 1
 
-        logger.debug("    Number of CPUs detected: %i", ncpus)
+        logger.debug("   Number of CPUs requested: %i", ncpus)
         logger.debug("     Number of observations: %i", nobstot)
         logger.debug("    Max number of obs/chunk: %i", nobsmax)
         print('nchunks', nchunks)
@@ -296,16 +298,20 @@ class Observations:
 class runFlexpart:
     def __init__(self, rcf):
         self.rcf = rcf
+        self.uid = next(tempfile._get_candidate_names())
         self.observations = Observations(self.rcf)
+        if not self.rcf.haskey('meteo.lockfile'):
+            self.rcf.setkey('meteo.lockfile', f'runfex.rclone.meteo.lock.{self.uid}')
         self.meteo = meteo.Meteo(
             self.rcf.get('path.meteo'),
             archive=self.rcf.get('meteo.archive', default=None),
             prefix = self.rcf.get('meteo.prefix'),
-            tres=timedelta(self.rcf.get('meteo.interv')/24.)
+            tres=timedelta(self.rcf.get('meteo.interv')/24.),
+            lockfile=self.rcf.get('meteo.lockfile', default='runfex.rclone.meteo.lock')
         )
 
-    def setupObs(self, obslist):
-        self.observations.setup(obslist)
+    def setupObs(self, obslist, obsid='obsid'):
+        self.observations.setup(obslist, obsid)
 
     def config_times(self):
         """ Time boundaries of the simulation 
@@ -376,7 +382,7 @@ class runFlexpart:
         c.genFiles()
         self.observations.gen_RELEASES(rundir)
 
-    def distribute(self, nobsmax=None, maxdt=7):
+    def distribute(self, nobsmax=None, maxdt=7, skiptasks=[]):
         # Determine the size of the flexpart runs (nobsmax can be taken taken from rc-file, provided as argument,
         # or otherwise a default value of 50 obs/run is taken
         # Set nobsmax to inf to avoid splitting
@@ -389,9 +395,9 @@ class runFlexpart:
             ncpus=self.rcf.get('ntasks.parallell'),
             maxdt=maxdt
         )
-        self.runTasks(dbfiles)
+        self.runTasks(dbfiles, skiptasks=skiptasks)
 
-    def runTasks(self, obsfiles, chunks=None):
+    def runTasks(self, obsfiles, chunks=None, skiptasks=[]):
         """
         Submit the individual FLEXPART runs to SLURM.
         To avoid saturating the queue, tasks are submitted only when there is at least one free CPU
@@ -402,18 +408,23 @@ class runFlexpart:
         slurm = False
         if os.path.exists(os.path.join(self.rcf.get('path.run'), 'flexpart.ok')):
             os.remove(os.path.join(self.rcf.get('path.run'), 'flexpart.ok'))
-        if self.rcf.get('run.interactive'):
+        if self.rcf.get('run.interactive', default=False):
             self.submit = self.submit_interactive
-        elif self.rcf.get('run.tsp'):
+        elif self.rcf.get('run.tsp', default=False):
             self.submit = self.submit_tsp
         elif self.rcf.get('run.slurm', default=True) :
             slurm = True
             self.submit = self.submit_sbatch
 
+        # Write a new rc-file that will be used by the jobs:
+        self.rcfile = os.path.join(self.rcf.get('path.scratch_global'), f'flexpart.{self.uid}.rc')
+        self.rcf.write(self.rcfile)
+
         pids = []
         for ichunk, dbf in enumerate(obsfiles) :
             # Count the number of active tasks
-            if chunks is None or ichunk in chunks :
+            if ichunk not in skiptasks :
+                #if chunks is None or ichunk in chunks :
                 pids.append(self.submit(dbf, ichunk))
 
         # Wait for the runs to finish
@@ -427,18 +438,17 @@ class runFlexpart:
         rundir = os.path.join(self.rcf.get('path.run'), '%i'%ichunk)
         outdir = os.path.join(self.rcf.get('path.output'), '%i'%ichunk)
         cmd = [
-            'srun',
-            '--exclusive', '-N', '1', '-n', '1',
+            'srun', '--exclusive', '-N', '1', '-n', '1',
             '--job-name=flexpart.%i' % ichunk,
             '-o', '%s/job.%i.out' % (logpath, ichunk),
             '-e', '%s/job.%i.out' % (logpath, ichunk),
-            'python', os.path.abspath(__file__), '--db', dbf, '--rc', os.path.join(self.rcf.dirname, self.rcf.filename), '--path', rundir, '-o', outdir
+            sys.executable, os.path.abspath(__file__), '--db', dbf, '--rc', self.rcfile, '--path', rundir, '-o', outdir
         ]
         logger.info(' '.join([x for x in cmd]))
 
         # delay the submission if there are too many tasks running:
         ntasks = subprocess.check_output(['squeue', '-s', '-j', os.environ['SLURM_JOBID']], text=True).count(os.environ['SLURM_JOBID'])
-        ncpus = self.rcf.get('ntasks.parallell')
+        ncpus = self.rcf.get('ntasks.parallell', default=int(os.environ['SLURM_NTASKS']))
 
         logger.debug("Running tasks: %i", ntasks)
         while ntasks >= ncpus :
@@ -446,6 +456,7 @@ class runFlexpart:
             time.sleep(60)
             ntasks = subprocess.check_output(['squeue', '-s', '-j', os.environ['SLURM_JOBID']], text=True).count(os.environ['SLURM_JOBID'])
 
+        logger.info(" ".join([x for x in cmd]))
         return subprocess.Popen(cmd)
 
     def submit_tsp(self, dbf, ichunk):
@@ -459,7 +470,7 @@ class runFlexpart:
         os.system(f'tsp -S {ncpus}')
 
         # Launch the subtask
-        cmd = ['tsp', 'python', os.path.abspath(__file__), '--db', dbf, '--rc', os.path.join(self.rcf.dirname, self.rcf.filename), '--path', rundir, '-o', outdir]
+        cmd = ['tsp', sys.executable, os.path.abspath(__file__), '--db', dbf, '--rc', self.rcfile, '--path', rundir, '-o', outdir]
         cmd = ' '.join([x for x in cmd])
         logger.info(cmd)
         os.system(cmd)
@@ -474,7 +485,8 @@ class runFlexpart:
     def submit_interactive(self, dbf, ichunk):
         time.sleep(3)
         rundir = os.path.join(self.rcf.get('path.run'), '%i'%ichunk)
-        cmd = 'python %s --db %s --rc %s --path %s'%(os.path.abspath(__file__), dbf, os.path.join(self.rcf.dirname, self.rcf.filename), rundir)
+        #cmd = 'python %s --db %s --rc %s --path %s'%(os.path.abspath(__file__), dbf, os.path.join(self.rcf.dirname, self.rcf.filename), rundir)
+        cmd = f"{sys.executable} {os.path.abspath(__file__)} --db {dbf} --rc {self.rcfile} --path {rundir}"
         logger.info(cmd)
         os.system(cmd)
 
