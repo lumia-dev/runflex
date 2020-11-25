@@ -129,6 +129,9 @@ class Command:
 
     def create_directories(self):
         checkpath(self.rcf.get('path.output'))
+        okfile = os.path.join(self.rcf.get('path.output'), 'flexpart.ok')
+        if os.path.exists(okfile):
+            os.remove(okfile)
 
     def gen_COMMAND(self, rundir):
         command = Namelist(file=self.rcf.get('file.command'), name='COMMAND')
