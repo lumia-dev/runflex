@@ -41,9 +41,9 @@ class LocalArchive:
 
 
 class RcloneArchive:
-    def __init__(self, key, lockfile_path='/${TMPDIR}/${USER}/', lockfile_expire=3600.):
+    def __init__(self, key, lockfile_path='/${TMPDIR}/${USER}/', lockfile_expire=3600., lockfile='runflex.rclone.meteo.lock'):
         _, self.remote, self.path = key.split(':')
-        self.lockfile = os.path.join(lockfile_path, 'runflex.rclone.meteo.lock')
+        self.lockfile = os.path.join(lockfile_path, lockfile)
         self.remote_structure = {}
         self.remote_files = []
         self.lock_expire = lockfile_expire
@@ -84,7 +84,11 @@ class RcloneArchive:
     def _release_lock(self, warn=False):
         if warn:
             logger.warn(warn)
-        os.remove(self.lockfile)
+        try :
+            os.remove(self.lockfile)
+        except FileNotFoundError :
+            # If for some reason, the lock has been removed by another way, just pass
+            pass
 
 
 class Archive:
@@ -101,7 +105,7 @@ class Archive:
 
 
 class Meteo:
-    def __init__(self, path, archive=None, prefix='EN', tres=None, minspace=None, minage=None):
+    def __init__(self, path, archive=None, prefix='EN', tres=None, minspace=None, minage=None, **kwargs):
         """
         path (str): folder where meteo files will be read-in by FLEXPART
         prefix (str): prefix of the meteo files (e.g. ENXXXXXXXX)
@@ -112,7 +116,7 @@ class Meteo:
         self.prefix = prefix
         self.tres = tres
         if archive is not None :
-            archive = Archive(archive, lockfile_path=path)
+            archive = Archive(archive, lockfile_path=path, **kwargs)
         self.archive = archive
         if not os.path.isdir(self.path):
             os.makedirs(self.path)
