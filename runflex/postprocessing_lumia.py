@@ -368,8 +368,8 @@ class MfpFile:
         self.dt = None
         self.releases = None
         self.specie = {}
-        self.load_metadata()
         self.corrfac = 1.
+        self.load_metadata()
 
     def load_metadata(self):
         with Dataset(self.filename) as ds :
@@ -388,7 +388,9 @@ class MfpFile:
             if len(surface_layer_depth) > 1 :
                 logger.error("A one-layer footprint is expected by this script")
                 raise NotImplementedError
-            self.coorfac = 28.97/1000./surface_layer_depth[0]   # m3.s/kg to m2.s/mol
+
+            #self.coorfac = 28.97/1000./surface_layer_depth[0]   # m3.s/kg to m2.s/mol
+            self.coorfac = ds['spec001_mr'].weightmolar/1000/surface_layer_depth[0]
             self._gen_coordinates()
 
             # Load release info:
