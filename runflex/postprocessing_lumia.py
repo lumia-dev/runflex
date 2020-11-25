@@ -145,12 +145,12 @@ class Concat2:
         self.flist = array([os.path.basename(f) for f in flist])
 
         # Guess their sitename and times:
-        self.sitemonth = array([f"{a}.{b}.{c[:6]}" for (a,b,c,d) in [f.split('.') for f in flist]])
-        self.obsdates = array([datetime.strptime(c.split('.')[2], '%Y%m%d%H%M%S') for c in flist])
+        self.sitemonth = array([f"{a}.{b}.{c[:6]}" for (a,b,c,d) in [f.split('.') for f in self.flist]])
+        self.obsdates = array([datetime.strptime(c.split('.')[2], '%Y%m%d%H%M%S') for c in self.flist])
 
         # Loop over the individual files:
         p = Pool(processes=ncpus)
-        _ = [r for r in tqdm(p.imap(self.worker, self.sitemonth), total=len(self.sitemonth))]
+        _ = [r for r in tqdm(p.imap(self.worker, unique(self.sitemonth)), total=len(unique(self.sitemonth)))]
 
     def worker(self, sm):
 
@@ -169,40 +169,6 @@ class Concat2:
         # Add the files to the output file:
         for (fid, oid) in zip(files, obsid):
             out.add(oid, fid)
-
-
-# def Concat2(path):
-#     """
-#     Same as Concat, except that it doesn't rely on a user database:
-#     - the grouping is done following the site names, one file/site/month
-#     - the obsids are generated automatically:
-#     """
-#     # Get the list of files to concatenate
-#     flist = glob.glob(os.path.join(path, '*.*.??????????????.hdf'))
-#     flist = array([os.path.basename(f) for f in flist])
-
-#     # Guess their sitename and times:
-#     sitemonth = array([f"{a}.{b}.{c[:6]}" for (a,b,c,d) in [f.split('.') for f in flist]])
-#     obsdates = array([datetime.strptime(c.split('.')[2], '%Y%m%d%H%M%S') for c in flist])
-
-#     # Loop over the individual files:
-#     for sm in unique(sitemonth):
-
-#         # Create an output file with the month as origin
-#         site, height, month = sm.split('.')
-#         month = datetime.strptime(month, '%Y%m')
-#         outfile = os.path.join(path, month.strftime(f"{site}.{height}.%Y-%m.hdf"))
-#         out = LFPF(outfile, month)
-
-#         # Select the list of files to add, and create their obsids:
-#         files = flist[sitemonth == sm]
-#         dates = obsdates[sitemonth == sm]
-#         obsid = [f"{site}.{height}.{d.strftime('%Y%m%d-%H%M%S')}" for d in dates]
-#         files = [os.path.join(path, f) for f in files]
-
-#         # Add the files to the output file:
-#         for (fid, oid) in zip(files, obsid):
-#             out.add(oid, fid)
 
 
 class SingleFootprintFile:
@@ -504,10 +470,25 @@ class MfpFile:
         self.coords['grid'] = [g.reshape(-1) for g in meshgrid(range(nt), range(nlat), range(nlon), indexing='ij')]
 
 
-def split_gridtime(filename, dest):
-    fpf = MfpFile(filename)
-    for fp in fpf:
-        fp.writeHDF(dest)
+class split_gridtime:
+    def __init__(self, pattern, dest, ncpus=1):
+        self.dest = dest
+        fnames = glob.glob(pattern)
+        valid = [os.path.exists(os.path.join(os.path.dirname(f), 'flexpart.ok')) for f in fnames]
+        fnames = array(fnames)[valid]
+
+        p = Pool(processes=ncpus)
+        _ = [r for r in tqdm(p.imap(self.worker, fnames), total=len(fnames))]
+
+    def worker(self, fname):
+        fpf = MfpFile(fname)
+        for fp in fpf :
+            fp.writeHDF(self.dest)
+
+# def split_gridtime(filename, dest):
+#     fpf = MfpFile(filename)
+#     for fp in fpf:
+#         fp.writeHDF(dest)
 
 
 def PostProcessor(run):
