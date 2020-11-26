@@ -137,8 +137,14 @@ class Concat2:
     - the grouping is done following the site names, one file/site/month
     - the obsids are generated automatically:
     """
-    def __init__(self, path, ncpus=1):
+    def __init__(self, path, dest=None, ncpus=1, remove_files=False):
+        if ncpus < 1 :
+            ncpus = os.cpu_count()
+
         self.path = path
+        dest = dest if dest is not None else path
+        self.dest = dest
+        self.remove_files = remove_files
         
         # Get the list of files to concatenate:
         flist = glob.glob(os.path.join(path, '*.*.??????????????.hdf'))
@@ -157,7 +163,7 @@ class Concat2:
         # Create an output file with the month as origin
         site, height, month = sm.split('.')
         month = datetime.strptime(month, '%Y%m')
-        outfile = os.path.join(self.path, month.strftime(f"{site}.{height}.%Y-%m.hdf"))
+        outfile = os.path.join(self.dest, month.strftime(f"{site}.{height}.%Y-%m.hdf"))
         out = LFPF(outfile, month)
 
         # Select the list of files to add, and create their obsids:
@@ -169,6 +175,10 @@ class Concat2:
         # Add the files to the output file:
         for (fid, oid) in zip(files, obsid):
             out.add(oid, fid)
+        
+        if remove_files :
+            for fid in files :
+                os.remove(fid)
 
 
 class SingleFootprintFile:
@@ -475,10 +485,14 @@ class MfpFile:
 class split_gridtime:
     def __init__(self, pattern, dest, ncpus=1):
         self.dest = dest
+        if not os.path.exists(dest):
+            os.makedirs(dest)
         fnames = glob.glob(pattern)
         valid = [os.path.exists(os.path.join(os.path.dirname(f), 'flexpart.ok')) for f in fnames]
         fnames = array(fnames)[valid]
 
+        if ncpus < 1 :
+            ncpus = os.cpu_count()
         p = Pool(processes=ncpus)
         _ = [r for r in tqdm(p.imap(self.worker, fnames), total=len(fnames))]
 
@@ -486,6 +500,7 @@ class split_gridtime:
         fpf = MfpFile(fname)
         for fp in fpf :
             fp.writeHDF(self.dest)
+        print(fname)
 
 # def split_gridtime(filename, dest):
 #     fpf = MfpFile(filename)
