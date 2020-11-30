@@ -176,7 +176,7 @@ class Concat2:
         for (fid, oid) in zip(files, obsid):
             out.add(oid, fid)
         
-        if remove_files :
+        if self.remove_files :
             for fid in files :
                 os.remove(fid)
 
