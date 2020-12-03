@@ -450,14 +450,14 @@ class runFlexpart:
         logger.info(' '.join([x for x in cmd]))
 
         # delay the submission if there are too many tasks running:
-        ntasks = subprocess.check_output(['squeue', '-s', '-j', os.environ['SLURM_JOBID']], text=True).count(os.environ['SLURM_JOBID'])
+        ntasks = subprocess.check_output(['squeue', '-s', '-j', os.environ['SLURM_JOBID']], text=True).count('flexpart')
         ncpus = self.rcf.get('ntasks.parallell', default=int(os.environ['SLURM_NTASKS']))
 
         logger.debug("Running tasks: %i", ntasks)
         while ntasks >= ncpus :
             logger.debug("Too many tasks (%i). Waiting 1 minute ...", ntasks)
             time.sleep(60)
-            ntasks = subprocess.check_output(['squeue', '-s', '-j', os.environ['SLURM_JOBID']], text=True).count(os.environ['SLURM_JOBID'])
+            ntasks = subprocess.check_output(['squeue', '-s', '-j', os.environ['SLURM_JOBID']], text=True).count('flexpart')#os.environ['SLURM_JOBID'])
 
         logger.info(" ".join([x for x in cmd]))
         return subprocess.Popen(cmd)

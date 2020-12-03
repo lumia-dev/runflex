@@ -9,7 +9,7 @@ path.species        : ${path.lib}/scripts/species
 landuse.file        : ${path.lib}/data/IGBP_int1.dat
 landuse.z0.file     : ${path.lib}/data/surfdata.t
 surfdepo.file       : ${path.lib}/data/surfdepo.t
-path.output         : ${path.scratch_global}/output
+!path.output         : ${path.scratch_global}/output
 
 ! ========================================================================================
 ! FLEXPART build
