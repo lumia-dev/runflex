@@ -57,16 +57,21 @@ class RcloneArchive:
         path = os.path.join(self.path, str(date.year), str(date.month))
 
         # Get the list of files in the rclone repo, in the same folder (only if we are in a new folder)
+        success = False
         if path not in self.remote_structure :
-            logger.info("Retrieving list of files in rclone folder {self.remote:path})")
-            self.remote_structure[path] = subprocess.check_output(['rclone', 'lsf', f'{self.remote}:{path}'], universal_newlines=True).split('\n')
+            logger.info(f"Retrieving list of files in rclone folder {self.remote}:{path})")
+            try :
+                self.remote_structure[path] = subprocess.check_output(['rclone', 'lsf', f'{self.remote}:{path}'], universal_newlines=True).split('\n')
+            except subprocess.CalledProcessError :
+                # Previous command will return an exception if the path doesn't exist. 
+                logger.warning(f"Path {self.remote}:{path} not found on rclone archive")
+                self.remote_structure[path] = []
         
         # Retrieve the file
-        success = False
         if filename in self.remote_structure[path] :
             cmd = ['rclone', 'copy', f'{self.remote}:{path}/{filename}', dest]
-            logger.info(' '.join(cmd))
-            _ = subprocess.check_output(cmd)
+            logger.warning(' '.join(cmd))
+            _ = subprocess.run(cmd)
             success = os.path.exists(dest)
 
         self._release_lock()

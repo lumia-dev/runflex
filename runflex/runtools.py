@@ -229,9 +229,9 @@ class Observations:
             rl.add('LAT2', obs.lat)
             rl.add('Z1', obs.release_height)
             rl.add('Z2', obs.release_height)
-            rl.add('ZKIND', obs.kindz)
+            rl.add('ZKIND', int(obs.kindz))
             rl.add('MASS', obs.mass)
-            rl.add('PARTS', obs.npart)
+            rl.add('PARTS', int(obs.npart))
             rl.add('COMMENT', obs.Index, fmt=str)
             releases.addList(rl)
         releases.write(os.path.join(rundir, 'RELEASES'), mode='w')
@@ -350,11 +350,11 @@ class runFlexpart:
         # Additional set of source files (typically, those that are specific to a machine or project, and not on the git repository)
         if self.rcf.haskey('path.src.extras'):
             extras = os.path.normpath(self.rcf.get('path.src.extras')+'/')
-        os.system('rsync -avh %s/*.f90 %s'%(extras,builddir))
-        try :
-            shutil.copy('%s/makefile.%s.%s'%(extras,self.rcf.get('machine'),self.rcf.get('compiler')),'%s/Makefile'%builddir)
-        except FileNotFoundError :
-            pass
+            os.system('rsync -avh %s/*.f90 %s'%(extras,builddir))
+            try :
+                shutil.copy('%s/makefile.%s.%s'%(extras,self.rcf.get('machine'),self.rcf.get('compiler')),'%s/Makefile'%builddir)
+            except FileNotFoundError :
+                pass
 
         # make
         prevdir = os.getcwd()
@@ -409,12 +409,14 @@ class runFlexpart:
         """
 
         slurm = False
+        tsp = False
         if os.path.exists(os.path.join(self.rcf.get('path.run'), 'flexpart.ok')):
             os.remove(os.path.join(self.rcf.get('path.run'), 'flexpart.ok'))
         if self.rcf.get('run.interactive', default=False):
             self.submit = self.submit_interactive
         elif self.rcf.get('run.tsp', default=False):
             self.submit = self.submit_tsp
+            tsp = True
         elif self.rcf.get('run.slurm', default=True) :
             slurm = True
             self.submit = self.submit_sbatch
@@ -433,6 +435,8 @@ class runFlexpart:
         # Wait for the runs to finish
         if slurm :
             [pid.wait() for pid in pids]
+        elif tsp :
+            os.system('tsp -w')
 
     def submit_sbatch(self, dbf, ichunk):
         time.sleep(5)
@@ -480,7 +484,7 @@ class runFlexpart:
 
         # Long delay for the first simulations, do avoid overloading the system. Then go faster (the processes are waiting anyway)
         if ichunk < ncpus :
-            delay = 90
+            delay = 30
         else :
             delay = 0.1
         time.sleep(delay)
