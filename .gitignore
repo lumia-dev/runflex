@@ -1,5 +1,8 @@
 *.mod
 *.o
 runflex/__pycache__/
+runflex/runflex
 *.py[cod]
 .vscode/
+*.xml
+.idea/

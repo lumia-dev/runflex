@@ -237,7 +237,7 @@ module par_mod
   ! ---------
   ! Sabine Eckhardt: change of landuse inventary numclass=13
   ! ---------
-  integer,parameter :: maxwf=5000, maxtable=100, numclass=13, ni=11
+  integer,parameter :: maxwf=10000, maxtable=100, numclass=13, ni=11
   integer,parameter :: numwfmem=2 ! Serial version/MPI with 2 fields
   !integer,parameter :: numwfmem=3 ! MPI with 3 fields
 

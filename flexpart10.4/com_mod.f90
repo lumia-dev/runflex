@@ -766,7 +766,7 @@ module com_mod
   integer :: info_flag=0
   integer :: count_clock, count_clock0,  count_rate, count_max
   real    :: tins
-  logical, parameter :: nmlout=.true.
+  logical, parameter :: nmlout=.false.
 
   ! These variables are used to avoid having separate versions of
   ! files in cases where differences with MPI version are minor (eso)

@@ -51,23 +51,23 @@ program flexpart
   use par_mod
   use com_mod
   use conv_mod
-
-  use random_mod, only: gasdev1
+  use random_mod,        only : gasdev1
   use class_gribfile
-
-#ifdef USE_NCF
-  use netcdf_output_mod, only: writeheader_netcdf
-#endif
+  use netcdf_output_mod, only : writeheader_netcdf
+  use settings,          only : config, read_config
+  use blh_mod,           only : write_blh
 
   implicit none
 
-  integer :: i,j,ix,jy,inest, iopt
-  integer :: idummy = -320
+  integer            :: i,j,ix,jy,inest, iopt
+  integer            :: idummy = -320
   character(len=256) :: inline_options  !pathfile, flexversion, arg2
-  integer :: metdata_format = GRIBFILE_CENTRE_UNKNOWN
-  integer :: detectformat
+  integer            :: metdata_format = GRIBFILE_CENTRE_UNKNOWN
+  integer            :: detectformat
 
-  
+  ! Read the rc-file (if present!):
+  call read_config('flexpart.rc')
+
   ! Generate a large number of random numbers
   !******************************************
 
@@ -258,18 +258,12 @@ program flexpart
   ! Read the output grid specifications
   !************************************
 
-  if (verbosity.gt.0) then
-    write(*,*) 'call readoutgrid'
-  endif
-
-  call readoutgrid
-
-  if (nested_output.eq.1) then
-    call readoutgrid_nest
-    if (verbosity.gt.0) then
-      write(*,*) '# readoutgrid_nest'
+  if (config%transport) then
+    call readoutgrid
+    if (nested_output.eq.1) then
+      call readoutgrid_nest
     endif
-  endif
+  end if
 
   ! Read the receptor points for which extra concentrations are to be calculated
   !*****************************************************************************
@@ -304,10 +298,9 @@ program flexpart
   ! Read the coordinates of the release locations
   !**********************************************
 
-  if (verbosity.gt.0) then
-    print*,'call readreleases'
+  if (config%transport) then
+    call readreleases
   endif
-  call readreleases
 
   ! Read and compute surface resistances to dry deposition of gases
   !****************************************************************
@@ -320,9 +313,8 @@ program flexpart
   ! Convert the release point coordinates from geografical to grid coordinates
   !***************************************************************************
 
-  call coordtrafo  
-  if (verbosity.gt.0) then
-    print*,'call coordtrafo'
+  if (config%transport) then
+    call coordtrafo
   endif
 
   ! Initialize all particles to non-existent
@@ -469,7 +461,11 @@ program flexpart
   endif
 
   if (verbosity.gt.0) write (*,*) 'timemanager> call wetdepo'
-  call timemanager(metdata_format)
+  if (config%transport) then
+    call timemanager(metdata_format)
+  else if (config%blh) then
+    call write_blh(metdata_format)
+  end if
  
 
   if (verbosity.gt.0) then
