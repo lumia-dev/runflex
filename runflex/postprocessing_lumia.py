@@ -1,5 +1,7 @@
 import os
 import glob
+import time
+
 from h5py import File
 from netCDF4 import Dataset, chartostring
 from datetime import datetime, timedelta
@@ -22,18 +24,25 @@ class LumiaFootprintFile:
         self.global_attrs = {}
         self.empty = self.init()
 
-    def init(self):
-        empty = True
-        with File(self.filename, 'a') as ds:
-            if 'latitudes' in ds :
-                self.lats = ds['latitudes'][:]
-                self.lons = ds['longitudes'][:]
-                self.tres = ds.attrs['tres']
-                self.origin = datetime.strptime(ds.attrs['start'], '%Y-%m-%d %H:%M:%S')
-                for attr in ds.attrs:
-                    self.global_attrs[attr] = ds.attrs[attr]
-                empty = False
-        return empty
+    def init(self, count=0, maxcount=100, sleeptime=1):
+        try :
+            empty = True
+            with File(self.filename, 'a') as ds:
+                if 'latitudes' in ds :
+                    self.lats = ds['latitudes'][:]
+                    self.lons = ds['longitudes'][:]
+                    self.tres = ds.attrs['tres']
+                    self.origin = datetime.strptime(ds.attrs['start'], '%Y-%m-%d %H:%M:%S')
+                    for attr in ds.attrs:
+                        self.global_attrs[attr] = ds.attrs[attr]
+                    empty = False
+            return empty
+        except OSError :
+            if count < maxcount :
+                time.sleep(sleeptime)
+                return self.init(count+1, maxcount, sleeptime+1)
+            else :
+                raise RuntimeError(f"Couldn't open file {self.filename} (file busy)")
 
     def add(self, obsid, filename):
         fp = SingleFootprintFile(filename=filename)
@@ -69,7 +78,19 @@ class LumiaFootprintFile:
                 self.global_attrs[attr] = fp.ncattrs[attr]
             elif fp.ncattrs[attr] != self.global_attrs[attr]:
                 release_attrs[attr] = fp.ncattrs[attr]
+        return self.write_obs(obsid, fp, release_attrs)
 
+    def write_obs(self, obsid, fp, release_attrs, count=0, maxcount=100, wait=1.):
+        try :
+            return self._write_obs(obsid, fp, release_attrs)
+        except OSError :
+            if count < maxcount :
+                time.sleep(wait)
+                return self.write_obs(obsid, fp, release_attrs, count+1, maxcount, wait+1)
+            else :
+                raise RuntimeError(f"File {self.filename} couldn't be opened (file budy)")
+
+    def _write_obs(self, obsid, fp, release_attrs):
         # Write obs
         with File(self.filename, 'a') as ds :
             try :
@@ -112,6 +133,7 @@ class LFPF(LumiaFootprintFile):
 
 
 class Concat:
+    #TODO: delete the whole class?
     def __init__(self, db, field_input='inpfile', field_output='outpfile'):
         self.db = db
         self.field_input = field_input
@@ -137,7 +159,7 @@ class Concat2:
     - the grouping is done following the site names, one file/site/month
     - the obsids are generated automatically:
     """
-    def __init__(self, path, dest=None, ncpus=1, remove_files=False):
+    def __init__(self, path, dest=None, ncpus=1, remove_files=False, flist=None):
         if ncpus < 1 :
             ncpus = os.cpu_count()
 
@@ -147,8 +169,11 @@ class Concat2:
         self.remove_files = remove_files
         
         # Get the list of files to concatenate:
-        flist = glob.glob(os.path.join(path, '*.*.??????????????.hdf'))
-        self.flist = array([os.path.basename(f) for f in flist])
+        if flist is None :
+            flist = glob.glob(os.path.join(self.path, '*.*.??????????????.hdf'))
+            self.flist = array([os.path.basename(f) for f in flist])
+        else :
+            self.flist = flist
 
         # Guess their sitename and times:
         self.sitemonth = array([f"{a}.{b}.{c[:6]}" for (a,b,c,d) in [f.split('.') for f in self.flist]])
@@ -482,25 +507,30 @@ class MfpFile:
         self.coords['grid'] = [g.reshape(-1) for g in meshgrid(range(nt), range(nlat), range(nlon), indexing='ij')]
 
 
-class split_gridtime:
-    def __init__(self, pattern, dest, ncpus=1):
-        self.dest = dest
-        if not os.path.exists(dest):
-            os.makedirs(dest)
-        fnames = glob.glob(pattern)
-        valid = [os.path.exists(os.path.join(os.path.dirname(f), 'flexpart.ok')) for f in fnames]
-        fnames = array(fnames)[valid]
+def split_gridtime(pattern, dest):
+    if not os.path.exists(dest):
+        os.makedirs(dest)
+    fnames = glob.glob(pattern)
+    valid = [os.path.exists(os.path.join(os.path.dirname(f), 'flexpart.ok')) for f in fnames]
 
-        if ncpus < 1 :
-            ncpus = os.cpu_count()
-        p = Pool(processes=ncpus)
-        _ = [r for r in tqdm(p.imap(self.worker, fnames), total=len(fnames))]
-
-    def worker(self, fname):
+    files = []
+    for fname in array(fnames)[valid]:
         fpf = MfpFile(fname)
         for fp in fpf :
-            fp.writeHDF(self.dest)
-        print(fname)
+            fp.writeHDF(dest)
+            files.append(fp.filename)
+    return files
+
+    #     if ncpus < 1 :
+    #         ncpus = os.cpu_count()
+    #     p = Pool(processes=ncpus)
+    #     _ = [r for r in tqdm(p.imap(self.worker, fnames), total=len(fnames))]
+    #
+    # def worker(self, fname):
+    #     fpf = MfpFile(fname)
+    #     for fp in fpf :
+    #         fp.writeHDF(self.dest)
+    #     print(fname)
 
 # def split_gridtime(filename, dest):
 #     fpf = MfpFile(filename)
@@ -531,8 +561,10 @@ def PostProcessor(run):
     header_age = os.path.getmtime(os.path.join(path, 'header'))
     output_age = os.path.getmtime(outfile)
     if 0 < (output_age-header_age)/3600 < 12:
-        split_gridtime(outfile, dest)
+        files = split_gridtime(outfile, dest)
+        # Finally, concatenate:
+        Concat2(dest, ncpus=1, remove_files=rcf.get('remove_files', default=True), flist=files)
     elif output_age < header_age:
-        logging.warn(f"header older than grid_time file {outfile}. The simulation probably crashed: skipping post-processing")
+        logging.warning(f"header older than grid_time file {outfile}. The simulation probably crashed: skipping post-processing")
     else :
-        logging.warn(f"header suspiciously old compared to the model output in {path} ({(output_age-header_age)/3600} hours). Skipping the post-processing.")
+        logging.warning(f"header suspiciously old compared to the model output in {path} ({(output_age-header_age)/3600} hours). Skipping the post-processing.")

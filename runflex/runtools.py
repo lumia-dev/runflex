@@ -88,6 +88,9 @@ class Namelist:
         else :
             self.keys[key] = f'{value:{fmt}}'
 
+    def replace(self, key, value, fmt=None):
+        self.add(key, value, fmt)
+
     def write(self, filename, mode='w'):
         with open(filename, mode) as fid :
             fid.write(f'&{self.name}\n')
@@ -101,7 +104,7 @@ class Command:
         self.rcf = rcf
         self.start = start
         self.end = end
-    
+
     def genFiles(self):
         rundir = self.rcf.get('path.run')
         self.gen_pathnames(rundir)
@@ -109,7 +112,7 @@ class Command:
         self.gen_OUTGRID(rundir)
         self.copyFiles(rundir)
         self.gen_SPECIES(rundir)
-        self.create_directories()
+        #self.create_directories()
 
     def copyFiles(self, rundir):
         shutil.copy(self.rcf.get('landuse.file'), rundir)
@@ -122,16 +125,6 @@ class Command:
             fid.write('%s/\n' % self.rcf.get('path.output'))
             fid.write('%s/\n' % self.rcf.get('path.meteo'))
             fid.write(os.path.join(rundir, 'AVAILABLE'))
-            #fid.write('\n')
-            #fid.write('=====\n')
-            #fid.write('=====\n')
-            #fid.write('=====\n')
-
-    def create_directories(self):
-        checkpath(self.rcf.get('path.output'))
-        okfile = os.path.join(self.rcf.get('path.output'), 'flexpart.ok')
-        if os.path.exists(okfile):
-            os.remove(okfile)
 
     def gen_COMMAND(self, rundir):
         command = Namelist(file=self.rcf.get('file.command'), name='COMMAND')
@@ -151,6 +144,12 @@ class Command:
         self.start = start
         self.end = end
 
+        # COMMAND keys can be replaced by rc-file keys
+        for key in self.rcf.keys:
+            if key.startswith('command.'):
+                cmd = key.replace('command.', '')
+                command.replace(cmd.upper(), self.rcf.get(key))
+
         command.add('IBDATE', self.start.strftime("%Y%m%d"))
         command.add('IBTIME', self.start.strftime("%H%M%S"))
         command.add('IEDATE', self.end.strftime("%Y%m%d"))
@@ -158,9 +157,23 @@ class Command:
         command.write(os.path.join(rundir, 'COMMAND'))
 
     def gen_OUTGRID(self, rundir):
-        gridfile = self.rcf.get('file.grid')
-        shutil.copy(gridfile, os.path.join(rundir, 'OUTGRID'))
-        checkpath(self.rcf.get('path.output'))
+        grid = Namelist(name='OUTGRID')
+        x0, x1, dx = self.rcf.get('outgrid.x')
+        y0, y1, dy = self.rcf.get('outgrid.y')
+        nx = (x1-x0)/dx
+        ny = (y1-y0)/dy
+        grid.add('OUTLON0', float(x0))
+        grid.add('OUTLAT0', float(y0))
+        grid.add('NUMXGRID', int(nx))
+        grid.add('NUMYGRID', int(ny))
+        grid.add('DXOUT', float(dx))
+        grid.add('DYOUT', float(dy))
+        grid.add('OUTHEIGHTS', self.rcf.get('outgrid.levels'))
+        grid.write(os.path.join(rundir, 'OUTGRID'))
+
+#        gridfile = self.rcf.get('file.grid')
+#        shutil.copy(gridfile, os.path.join(rundir, 'OUTGRID'))
+#        checkpath(self.rcf.get('path.output'))
         #if os.path.isdir(self.rcf.get('path.output')) == False: # Check whether output directory exists otherwise creates it. Flexparat wants to add the COMMAND file here and therefore the directiry needs to exist. 
         #    os.mkdir(self.rcf.get('path.output'))
 
@@ -192,7 +205,7 @@ class Observations:
             self.observations.loc[:, 'kindz'] = self.rcf.get('releases.kindz')
         if 'release_height' not in self.observations.columns :
             # Plain sites
-            self.observations.loc[self.observations.kindz == 1, 'release_height'] = self.observations.loc[:, 'height']
+            self.observations.loc[self.observations.kindz == 1, 'release_height'] = self.observations.loc[self.observations.kindz == 1, 'height']
 
             # Mountain top sites
             alt_corr = self.rcf.get('releases.altitude_correction', default=1)
@@ -303,15 +316,8 @@ class runFlexpart:
         self.rcf = rcf
         self.uid = next(tempfile._get_candidate_names())
         self.observations = Observations(self.rcf)
-        if not self.rcf.haskey('meteo.lockfile'):
-            self.rcf.setkey('meteo.lockfile', f'runfex.rclone.meteo.lock.{self.uid}')
-        self.meteo = meteo.Meteo(
-            self.rcf.get('path.meteo'),
-            archive=self.rcf.get('meteo.archive', default=None),
-            prefix = self.rcf.get('meteo.prefix'),
-            tres=timedelta(self.rcf.get('meteo.interv')/24.),
-            lockfile=self.rcf.get('meteo.lockfile', default='runfex.rclone.meteo.lock')
-        )
+        self.completed = False
+        self.okfile = os.path.join(self.rcf.get('path.run'), 'flexpart.ok')
 
     def setupObs(self, obslist, obsid='obsid'):
         self.observations.setup(obslist, obsid)
@@ -327,8 +333,18 @@ class runFlexpart:
 
     def config_meteo(self, start, end):
         """ Check the meteorological files """
+        if not self.rcf.haskey('meteo.lockfile'):
+            self.rcf.setkey('meteo.lockfile', f'runfex.rclone.meteo.lock.{self.uid}')
 
-        if self.rcf.get('meteo.cleanup'):
+        self.meteo = meteo.Meteo(
+            self.rcf.get('path.meteo'),
+            archive=self.rcf.get('meteo.archive', default=None),
+            prefix = self.rcf.get('meteo.prefix'),
+            tres=timedelta(self.rcf.get('meteo.interv')/24.),
+            lockfile=self.rcf.get('meteo.lockfile', default='runfex.rclone.meteo.lock')
+        )
+
+        if self.rcf.get('meteo.cleanup', default=False):
             self.meteo.cleanup(
                 self.rcf.get('meteo.cleanup.minspace'),
                 self.rcf.get('meteo.cleanup.minage')
@@ -368,14 +384,22 @@ class runFlexpart:
             logger.error("Compilation aborted. The whole universe is against you. Stop working and go get a drink. Seriously!")
 
     def configure(self):
-        # Create the run directory
+        # Create the directories
         rundir = self.rcf.get('path.run')
         builddir = self.rcf.get('path.build')
+        outputdir = self.rcf.get('path.output')
         checkpath(rundir)
         checkpath(builddir)
+        checkpath(outputdir)
+
+        self.completed = os.path.exists(self.okfile)
+        if self.completed :
+            logger.info(f"Found okfile at {os.path.abspath(self.okfile)}, returning ...")
+            return
 
         # Copy the executable to the run directory
-        safecopy(os.path.join(builddir, 'flexpart.x'), rundir)
+        #safecopy(os.path.join(builddir, 'flexpart.x'), rundir)
+        safecopy(self.rcf.get('path.executable', default='/usr/bin/flexpart.x'), rundir)
 
         # Setup the meteo files
         start, end = self.config_times()
@@ -410,8 +434,6 @@ class runFlexpart:
 
         slurm = False
         tsp = False
-        if os.path.exists(os.path.join(self.rcf.get('path.run'), 'flexpart.ok')):
-            os.remove(os.path.join(self.rcf.get('path.run'), 'flexpart.ok'))
         if self.rcf.get('run.interactive', default=False):
             self.submit = self.submit_interactive
         elif self.rcf.get('run.tsp', default=False):
@@ -436,7 +458,7 @@ class runFlexpart:
         if slurm :
             [pid.wait() for pid in pids]
         elif tsp :
-            os.system('tsp -w')
+            _ = [subprocess.run(['tsp', '-w', pid]) for pid in pids]
 
     def submit_sbatch(self, dbf, ichunk):
         time.sleep(5)
@@ -478,16 +500,17 @@ class runFlexpart:
 
         # Launch the subtask
         cmd = ['tsp', sys.executable, os.path.abspath(__file__), '--db', dbf, '--rc', self.rcfile, '--path', rundir, '-o', outdir]
-        cmd = ' '.join([x for x in cmd])
-        logger.info(cmd)
-        os.system(cmd)
+        logger.info(' '.join([x for x in cmd]))
+        jobid = subprocess.check_output(cmd).strip().decode()
 
         # Long delay for the first simulations, do avoid overloading the system. Then go faster (the processes are waiting anyway)
         if ichunk < ncpus :
-            delay = 30
+            delay = 10
         else :
             delay = 0.1
         time.sleep(delay)
+
+        return jobid
 
     def submit_interactive(self, dbf, ichunk):
         time.sleep(3)
@@ -499,10 +522,16 @@ class runFlexpart:
 
     def run(self):
         os.chdir(self.rcf.get('path.run'))
-        subprocess.check_call(['./flexpart.x'])
+        if not self.completed :
+            subprocess.check_call(['./flexpart.x'])
         if self.rcf.get('postprocess.lumia', default=False):
             from runflex.postprocessing_lumia import PostProcessor as pp
             pp(self)
+        else :
+            # Move the whole output directory to /output
+            rundir = self.rcf.get('path.run')
+            outputdir = self.rcf.get('path.output.pp')
+            shutil.move(rundir, outputdir)
 
 
 def parse_options(args):
@@ -553,9 +582,15 @@ if __name__ == '__main__' :
     db = read_hdf(dbfile)
 
     # Initialize the flexpart run
-    fp = runFlexpart(rcf)
-    fp.setupObs(db)
-    fp.configure()
+    task = runFlexpart(rcf)
+    task.setupObs(db)
+    task.configure()
+    task.run()
 
-    # Run, collect (i.e. gather the individual footprints in monthly files) and delete temp files
-    fp.run()
+    # Collect model files if the run has failed:
+    if rcf.get('collect_fail', default=True):
+        fail_path = rcf.get('path.fail')
+        if not os.path.exists(fail_path):
+            os.makedirs(fail_path)
+        if not os.path.exists(task.okfile):
+            shutil.copytree(rcf.get('path.run'), fail_path)
