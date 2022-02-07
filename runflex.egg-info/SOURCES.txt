@@ -1,6 +1,7 @@
 README.md
 setup.py
 runflex/__init__.py
+runflex/compile.py
 runflex/logging_tools.py
 runflex/meteo.py
 runflex/postprocessing_lumia.py

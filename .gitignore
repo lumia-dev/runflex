@@ -6,3 +6,4 @@ runflex/runflex
 .vscode/
 *.xml
 .idea/
+/singularity/*.sif

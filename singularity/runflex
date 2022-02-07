@@ -1,0 +1,89 @@
+#!/usr/bin/env python3
+
+import sys
+import os
+import subprocess
+from argparse import ArgumentParser
+import configparser
+from loguru import logger
+
+c = configparser.ConfigParser()
+c.read(os.path.join(os.environ['HOME'], '.config/runflex.ini'))
+
+p = ArgumentParser(add_help=False)
+p.add_argument('--scratch', '-s', default=None)
+p.add_argument('--meteo', '-m', default=None)
+p.add_argument('--output', '-o', default=None)
+p.add_argument('--dev', '-d', action='store_true', default=False)
+p.add_argument('--extra-mount-path', '-e', action='append')
+p.add_argument('--exec', default=None, help="Script or command to be run in the container")
+p.add_argument('--help', '-h', default=False, action='store_true', help="Print this help message")
+p.add_argument('--make-folders', default=False, action='store_true', help="Should the folders be created?")
+
+args, runflex_args = p.parse_known_args(sys.argv[1:])
+
+# Decide if we should show a help message or pass the help command to subprocess
+if args.help :
+    if not runflex_args :
+        p.print_help()
+        sys.exit()
+    else :
+        runflex_args.insert(0, '--help')
+
+# Read default settings depending on flavour
+flavour = 'dev' if args.dev else 'default'
+
+if args.scratch is None :
+    args.scratch = c[flavour].get('/scratch', c['default'].get('/scratch', '.'))
+if args.meteo is None :
+    args.meteo = c[flavour].get('/meteo', c['default'].get('/meteo', None))
+if args.output is None :
+    args.output = c[flavour].get('/output', c['default'].get('/output', None))
+
+container = c['containers'][flavour]
+
+# Set the meteo and output mounts as subfolders of scratch if they are not provided
+if args.meteo is None :
+    args.meteo = os.path.join(args.scratch, 'meteo')
+
+if args.output is None :
+    args.output = os.path.join(args.scratch, 'output')
+
+# Check if there are extra mount paths :
+mounts = {}
+if 'extras' in c :
+    for source, dest in c['extras'].items():
+        mounts[dest] = source
+
+if flavour in c:
+    for dest, source in c[flavour].items():
+        mounts[dest] = source
+
+if args.extra_mount_path is not None :
+    for mount in args.extra_mount_path :
+        source, dest = mount.split(':')
+        mounts[dest] = source
+
+mounts['/meteo'] = args.meteo
+mounts['/output'] = args.output
+mounts['/scratch'] = args.scratch
+
+# Ensure that the folders to be mounted exist:
+for mp, mount in mounts.items() :
+    if not os.path.exists(mount) and args.make_folders :
+        logger.info(f"Creating folder {mount} for mount point {mp}")
+        os.makedirs(mount)
+
+# Convert to a command line:
+cmd = []
+for dest, source in mounts.items():
+    cmd.extend(['-B', f'{source}:{dest}'])
+cmd.append(container)
+
+# Run subprocess
+if args.exec is not None :
+    cmd = ['singularity', 'exec'] + cmd + runflex_args
+else :
+    cmd = ['singularity', 'run'] + cmd + runflex_args
+logger.info(' '.join([c for c in cmd]))
+subprocess.call(cmd)

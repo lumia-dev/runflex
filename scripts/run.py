@@ -24,3 +24,7 @@ fp = runFlexpart(rc(args.rc))
 fp.compile()
 fp.setupObs(db)
 fp.distribute()
+
+# Finally, we need to aggregate the data:
+from runflex.postprocessing_lumia import Concat2
+c = Concat2('/output', ncpus=fp.rcf.get('ntasks.parallell'), remove_files=True)

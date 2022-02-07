@@ -82,13 +82,13 @@ class RcloneArchive:
             # Get the age of the file:
             if datetime.now().timestamp()-os.path.getctime(self.lockfile) > self.lock_expire:
                 self._release_lock(warn=f'Removing expired lock file {self.lockfile}')
-            logger.warn(f"Meteo lock file found {self.lockfile}, waiting 30 seconds")
+            logger.warning(f"Meteo lock file found {self.lockfile}, waiting 30 seconds")
             sleep(30)
         open(self.lockfile, 'a').close()
 
     def _release_lock(self, warn=False):
         if warn:
-            logger.warn(warn)
+            logger.warning(warn)
         try :
             os.remove(self.lockfile)
         except FileNotFoundError :

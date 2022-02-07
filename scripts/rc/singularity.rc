@@ -24,7 +24,7 @@ surfdepo.file       : ${path.lib}/data/surfdepo.t
 
 !###################################################3
 ! Machine settings
-ntasks.parallell : ${SLURM_CPUS_ON_NODE} 
+ntasks.parallell : ${RUNFLEX_NCPUS}
 
 !###################################################3
 ! FLEXPART settings
@@ -44,3 +44,5 @@ path.build      : /build
 path.src        : ${path.lib}/flexpart10.4
 path.src.extras : ${path.lib}/extras/
 
+postprocess.lumia : T
+path.output.pp    : /output
