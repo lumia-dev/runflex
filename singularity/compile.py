@@ -11,7 +11,7 @@ p.add_argument('--src', '-s', help='Base source directory', required=True)
 p.add_argument('--verbosity', '-v', default='INFO')
 p.add_argument('--extra', help="Optional extra source paths, which overwrites the source files in the base directory.")
 p.add_argument('--fc', help='Fortran compiler', default='gfortran')
-p.add_argument('--dest', '-d', help="Installation path", default='/usr/bin')
+p.add_argument('--dest', '-d', help="Installation path", default='/flexpart')
 args = p.parse_args(sys.argv[1:])
 
 logger.setLevel(args.verbosity)

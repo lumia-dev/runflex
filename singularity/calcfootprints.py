@@ -2,12 +2,14 @@
 import os
 import shutil
 import sys
+from runflex import utilities
 from runflex.rctools import rc
 from runflex.runtools import runFlexpart
 from pandas import read_csv
 from runflex.logging_tools import logger
 from argparse import ArgumentParser
-from runflex.postprocessing_lumia import Concat2
+from runflex.utilities import check_success
+
 
 p = ArgumentParser()
 p.add_argument('--verbosity', '-v', default='INFO')
@@ -20,6 +22,7 @@ p.add_argument('--only', action='append', help="run only this site (add several 
 p.add_argument('--nobs', default=None, help="Use this to limit the number of observations (i.e. for test purposes)", type=int)
 p.add_argument('--setkey', action='append', help="use to override some rc-keys")
 p.add_argument('--cleanup', action='store_true', default=False, help="Ensure that the rundir is clear from previous runs (set to False by default as this will erase anything in the scratch dir, even if it doesn't belong to runflex!)")
+p.add_argument('--continue', action='store_true', default=True, help="Check the output folder to see if footprints are already present. Process only those who aren't. Set to False to avoid this behaviour", dest='continue_')
 args = p.parse_args(sys.argv[1:])
 
 logger.setLevel(args.verbosity)
@@ -57,11 +60,19 @@ if args.cleanup :
     shutil.rmtree(rcf.get('path.run'), ignore_errors=True)
     shutil.rmtree(rcf.get('path.output'), ignore_errors=True)
 
+# Detect the database format:
+if args.obs.endswith('tar.gz'):
+    db = utilities.read_obsdb(args.obs)
+else :
+    db = read_csv(args.obs, parse_dates=[0], index_col=False, infer_datetime_format=True)
 
-db = read_csv(args.obs, parse_dates=[0], index_col=False, infer_datetime_format=True)
 if args.only :
     select = [o in args.only for o in db.code]
     db = db.loc[select]
+
+if args.continue_:
+    footprint_exists = check_success(db, rcf.get('path.output.pp'))
+    db = db.loc[~footprint_exists]
 
 if args.nobs is not None :
     if db.shape[0] > args.nobs :
@@ -71,6 +82,8 @@ fp = runFlexpart(rcf)
 fp.setupObs(db)
 fp.distribute()
 
+# Check success
+
 # Concatenate output files:
-if rcf.get('postprocess.lumia'):
-    Concat2(rcf.get('path.output.pp'), ncpus=args.ncpus, remove_files=rcf.get('pp.remove_files', default=True))
+#if rcf.get('postprocess.lumia'):
+#    Concat2(rcf.get('path.output.pp'), ncpus=args.ncpus, remove_files=rcf.get('pp.remove_files', default=True))

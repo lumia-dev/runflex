@@ -198,9 +198,11 @@ class Observations:
         The index is created as 'code.height.time' and is used to define the footprint file names
         """
         self.observations = obslist
-        if obsid not in self.observations.columns:
-            self.observations.loc[:, obsid] = ['%s.%im.%s'%(o.code.lower(),o.height,o.time.strftime('%Y%m%d%H%M%S')) for o in self.observations.itertuples()]
-        self.observations.set_index(obsid, inplace=True)
+
+        if self.observations.index.name != obsid :
+            if obsid not in self.observations.columns :
+                self.observations.loc[:, obsid] = ['%s.%im.%s' % (o.code.lower(), o.height, o.time.strftime('%Y%m%d%H%M%S')) for o in self.observations.itertuples()]
+            self.observations.set_index(obsid, inplace=True)
         if 'kindz' not in self.observations.columns :
             self.observations.loc[:, 'kindz'] = self.rcf.get('releases.kindz')
         if 'release_height' not in self.observations.columns :
@@ -291,7 +293,9 @@ class Observations:
             # select the slice of the observation database for that chunk
             # Make sure that the time interval between the first and last obs is not too long
             db = self.observations.iloc[i0:i0+nobsmax, :]
-            db = db.loc[db.time <= db.iloc[0].time + timedelta(maxdt),:]
+            if nobsmax > 1 :
+                #TODO: ad-hoc fix, will still not work sometimes ...
+                db = db.loc[db.time <= db.iloc[0].time + timedelta(maxdt),:]
 
             # Write the database slice to a file accessible by all nodes:
             fid, fname = tempfile.mkstemp(dir=path, prefix='observations.', suffix='.hdf')
@@ -398,8 +402,7 @@ class runFlexpart:
             return
 
         # Copy the executable to the run directory
-        #safecopy(os.path.join(builddir, 'flexpart.x'), rundir)
-        safecopy(self.rcf.get('path.executable', default='/usr/bin/flexpart.x'), rundir)
+        shutil.copy(os.path.join(builddir, 'flexpart.x'), rundir)
 
         # Setup the meteo files
         start, end = self.config_times()
@@ -525,7 +528,7 @@ class runFlexpart:
         if not self.completed :
             subprocess.check_call(['./flexpart.x'])
         if self.rcf.get('postprocess.lumia', default=False):
-            from runflex.postprocessing_lumia import PostProcessor as pp
+            from runflex.pp_lumia import PostProcessor as pp
             pp(self)
         else :
             # Move the whole output directory to /output
@@ -579,7 +582,7 @@ if __name__ == '__main__' :
         rcf.setkey('path.output', outdir)
 
     # Read the obs database
-    db = read_hdf(dbfile)
+    db = read_hdf(dbfile).dropna()
 
     # Initialize the flexpart run
     task = runFlexpart(rcf)

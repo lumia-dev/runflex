@@ -54,7 +54,7 @@ class Source:
             os.remove('flexpart.x')
         os.system('make')
         t1 = datetime.fromtimestamp(os.path.getmtime('flexpart.x'))
-        if dest is not None :
+        if dest is not None and dest != self.builddir :
             if os.path.exists(os.path.join(dest, 'flexpart.x')):
                 os.remove(os.path.join(dest, 'flexpart.x'))
             shutil.move('flexpart.x', dest)

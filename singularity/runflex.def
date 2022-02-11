@@ -19,6 +19,8 @@ From: ubuntu:20.04
     apt install -y libeccodes0 libeccodes-dev
     apt install -y libnetcdff-dev
 
+    python3 -m pip install loguru
+
     # Make directories
     mkdir /flexpart    # The flexpart source code will be put there
     mkdir /meteo       # The meteo must be in that path (or it will be downloaded there!)
