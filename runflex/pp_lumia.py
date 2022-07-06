@@ -442,7 +442,7 @@ def reformat(infile, destfolder, remove_files=True):
     tempdir = os.path.dirname(infile)
 
     # 1) Split the FLEXPART "grid_time" file in single-footprint files
-    single_files = split_gridtime(infile, destfolder)
+    single_files = split_gridtime(infile, tempdir)
 
     # 2) Concatenate these in a single HDF file
     obsids = concat(single_files, destfolder)

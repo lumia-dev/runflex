@@ -4,14 +4,13 @@ import os
 import subprocess
 import shutil
 from argparse import ArgumentParser
-import configparser
 import logging
 
 logger = logging.getLogger(__name__)
 
 p = ArgumentParser(add_help=False)
 authorized_commands = ['python3', 'ipython3', 'bash']
-p.add_argument('action', choices=['help', 'footprints', 'extract', 'install', 'blh', 'compile']+authorized_commands)
+p.add_argument('action', choices=['help', 'footprints', 'footprint', 'extract', 'install', 'blh', 'compile']+authorized_commands)
 p.add_argument('--bin', default=os.path.join(os.environ['HOME'], '.local/bin'))
 p.add_argument('--meteo', default=None, help='path where the meteo files will be downloaded')
 p.add_argument('--scratch', default=None, help='path where temporary files can be written')
@@ -24,6 +23,9 @@ if args.action == 'help':
 
 if args.action == 'footprints':
     subprocess.run(['python3', '/runflex/singularity/calcfootprints.py']+remainder)
+
+if args.action == 'footprint':
+    subprocess.run(['python3', '/runflex/singularity/calc_footprint.py']+remainder)
 
 elif args.action == 'blh':
     subprocess.run(['python3', '/runflex/scripts/blh.py']+remainder)

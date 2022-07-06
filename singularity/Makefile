@@ -8,7 +8,7 @@ build: runflex.def
 	[ ! -f ${CONTAINER}] || rm -f ${CONTAINER}
 	singularity build ${CONTAINER} runflex.def
 
-makenv: runflexenv.def
+buildenv: runflexenv.def
 	[ ! -f ${CONTAINER}] || rm -f ${CONTAINER}
 	singularity build ${ENVCONTAINER} runflexenv.def
 

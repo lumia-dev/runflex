@@ -128,10 +128,17 @@ class Command:
 
     def gen_COMMAND(self, rundir):
         command = Namelist(file=self.rcf.get('file.command'), name='COMMAND')
+
+        # COMMAND keys can be replaced by rc-file keys
+        for key in self.rcf.keys:
+            if key.startswith('command.'):
+                cmd = key.replace('command.', '')
+                command.replace(cmd.upper(), self.rcf.get(key))
+
         # Fix times so that we have conforming time steps:
         dt = timedelta(seconds=int(command.keys['LOUTAVER']))
         start, end = self.start, self.end
-        if dt < timedelta(days=1):
+        if dt <= timedelta(days=1):
             start = datetime(start.year, start.month, start.day)
             end = datetime(end.year, end.month, end.day)
             while start+dt < self.start:
@@ -141,19 +148,15 @@ class Command:
         else :
             logger.error("LOUTAVER longer than 24 hours is not implemented in runflex (but it should be doable)")
             raise NotImplementedError
+        
         self.start = start
         self.end = end
-
-        # COMMAND keys can be replaced by rc-file keys
-        for key in self.rcf.keys:
-            if key.startswith('command.'):
-                cmd = key.replace('command.', '')
-                command.replace(cmd.upper(), self.rcf.get(key))
 
         command.add('IBDATE', self.start.strftime("%Y%m%d"))
         command.add('IBTIME', self.start.strftime("%H%M%S"))
         command.add('IEDATE', self.end.strftime("%Y%m%d"))
         command.add('IETIME', self.end.strftime("%H%M%S"))
+
         command.write(os.path.join(rundir, 'COMMAND'))
 
     def gen_OUTGRID(self, rundir):
