@@ -1,8 +1,9 @@
 #!/usr/bin/env python
 
-import sys
+from distutils.dir_util import copy_tree
 import os
 import shutil
+import sys
 import time
 from runflex.logging_tools import logger
 from numpy import floor, isinf
@@ -12,6 +13,7 @@ from runflex import tqdm
 import tempfile
 import runflex.rctools as rctools
 import runflex.meteo as meteo
+from typing import List
 
 #logger = logging.getLogger(__name__)
 
@@ -276,9 +278,10 @@ class Observations:
         #print('nchunks', nchunks)
 
         # If there are more CPUs than observation chunks, reduce the number of obs/chunk:
+        # Make sure that there is at least one obs/chunk!
         if nchunks < ncpus :
             nchunks = ncpus
-            nobsmax = nobstot//nchunks
+            nobsmax = max(1, nobstot//nchunks)
             if (nobstot%nchunks > 0):
                 nchunks += 1
 
@@ -465,6 +468,17 @@ class runFlexpart:
             [pid.wait() for pid in pids]
         elif tsp :
             _ = [subprocess.run(['tsp', '-w', pid]) for pid in pids]
+            self.handle_failed(pids)
+
+    def handle_failed(self, pids: List[str]) -> None:
+        """
+        Copy the output of the failed runs to the "failed" directory
+        """
+        fail_path = self.rcf.get('path.fail')
+        for pid in pids :
+            status = subprocess.check_output(['tsp', '-s', pid]).strip().decode()
+            logfile = subprocess.check_output(['tsp', '-o', pid]).strip().decode()
+            shutil.copy(logfile, os.path.join(fail_path, f'flexpart.{pid}.{status}'))
 
     def submit_sbatch(self, dbf, ichunk):
         time.sleep(5)
@@ -494,7 +508,7 @@ class runFlexpart:
         logger.info(" ".join([x for x in cmd]))
         return subprocess.Popen(cmd)
 
-    def submit_tsp(self, dbf, ichunk):
+    def submit_tsp(self, dbf: str, ichunk: int) -> str:
 
         # Construct outdir/rundir for the task
         rundir = os.path.join(self.rcf.get('path.run'), '%i'%ichunk)
@@ -506,12 +520,14 @@ class runFlexpart:
 
         # Launch the subtask
         cmd = ['tsp', sys.executable, os.path.abspath(__file__), '--db', dbf, '--rc', self.rcfile, '--path', rundir, '-o', outdir]
+        #if self.rcf.get('tsp.email'):
+        #    cmd.extend(['-m', self.rcf.get('tsp.email')])
         logger.info(' '.join([x for x in cmd]))
         jobid = subprocess.check_output(cmd).strip().decode()
 
         # Long delay for the first simulations, do avoid overloading the system. Then go faster (the processes are waiting anyway)
         if ichunk < ncpus :
-            delay = 10
+            delay = 5
         else :
             delay = 0.1
         time.sleep(delay)
@@ -547,6 +563,7 @@ def parse_options(args):
     p.add_option('-d', '--db', dest='obs')
     p.add_option('-p', '--path', dest='rundir')
     p.add_option('-o', '--output', dest='outdir', default=None)
+    p.add_option('-i', '--id', dest='task_id', default=None)
     p.add_option('--verbosity', '-v', default='INFO')
     (options, outargs) = p.parse_args(args)
     return (options, outargs)
@@ -596,7 +613,9 @@ if __name__ == '__main__' :
     # Collect model files if the run has failed:
     if rcf.get('collect_fail', default=True):
         fail_path = rcf.get('path.fail')
+        run_path = rcf.get('path.run')
+        fail_path = os.path.join(fail_path, os.path.basename(run_path))
         if not os.path.exists(fail_path):
             os.makedirs(fail_path)
         if not os.path.exists(task.okfile):
-            shutil.copytree(rcf.get('path.run'), fail_path)
+            copy_tree(run_path, fail_path)

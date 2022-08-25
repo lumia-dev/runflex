@@ -67,7 +67,8 @@ class LumiaFootprintFile:
 
         # Check that the footprint file is valid (if not, continue, just skip this footprint)
         status = fp.check_valid()
-        if status > 0 :
+        if status > 1 :
+            logger.warning(f"Footprint {fp.release_id} in file {fp.filename} is invalid. Skipping it ...")
             return status
 
         # On the other hand, if anything fails in what comes next, we want the whole code to fail:
@@ -87,6 +88,7 @@ class LumiaFootprintFile:
             assert self.coords['tres'] == fp.dt.total_seconds()
 
         # Make sure that all data is on the same time coordinates
+        # (only for non empty footprints)
         fp.shift_origin(new_origin=self.origin)
 
         # Store global attributes :
@@ -237,13 +239,15 @@ class SingleFootprintFile:
         nshift = int(nshift)
 
         # Apply this to the self.data.itim array
-        self.data.loc[:, 'itim'] = self.data.loc[:, 'itim']+nshift
+        if not self.data.empty:
+            self.data.loc[:, 'itim'] = self.data.loc[:, 'itim']+nshift
+
+            # Construct the new time axis:
+            self.coords['time'] = self.itime_to_time(range(self.data.itim.min(), self.data.itim.max()))
 
         # Save the new origin:
         self.origin = new_origin
 
-        # Construct the new time axis:
-        self.coords['time'] = self.itime_to_time(range(self.data.itim.min(), self.data.itim.max()))
 
     def itime_to_time(self, itimes):
         return array([self.origin+(n+0.5)*self.dt for n in itimes])  # 1st time element should be half interval after the origin
@@ -281,9 +285,9 @@ class SingleFootprintFile:
         - return 0 otherwise
         """
         if not self.valid :
-            return 1
-        if self.data.shape[0] == 0 :
             return 2
+        if self.data.shape[0] == 0 :
+            return 1
         else :
             return 0
 
@@ -472,8 +476,10 @@ def PostProcessor(run):
     header_age = os.path.getmtime(os.path.join(path, 'header'))
     output_age = os.path.getmtime(outfile)
     if 0 < (output_age-header_age)/3600 < 12:
-        reformat(outfile, dest, remove_files=rcf.get('remove_files', default=True))
+        reformat(outfile, dest, remove_files=rcf.get('remove_files', default=False))
     elif output_age < header_age:
         logger.error(f"header older than grid_time file {outfile}. The simulation probably crashed: skipping post-processing")
+        raise RuntimeError
     else :
         logger.error(f"header suspiciously old compared to the model output in {path} ({(output_age-header_age)/3600} hours). Skipping the post-processing.")
+        raise RuntimeError

@@ -29,7 +29,7 @@ def check_success(df, path):
         except FileNotFoundError :
             logger.warning(f'File {filename} not found')
 
-    return df.loc[:, 'present']
+    return df.loc[:, 'present'].values
 
 
 def read_obsdb(fname):
@@ -37,4 +37,4 @@ def read_obsdb(fname):
         df = read_csv(tar.extractfile('observations.csv'), infer_datetime_format='%Y%m%d%H%M%S', index_col=0, parse_dates=['time'])
         if not 'code' in df.columns :
             df.loc[:, 'code'] = df.loc[:, 'site']
-    return df.loc[:, ['time', 'lat', 'lon', 'alt', 'height', 'code', 'kindz', 'obsid']].drop_duplicates(subset='obsid')
+        return df.loc[:, ['time', 'lat', 'lon', 'alt', 'height', 'code', 'kindz']].drop_duplicates()
