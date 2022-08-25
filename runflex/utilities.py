@@ -37,4 +37,7 @@ def read_obsdb(fname):
         df = read_csv(tar.extractfile('observations.csv'), infer_datetime_format='%Y%m%d%H%M%S', index_col=0, parse_dates=['time'])
         if not 'code' in df.columns :
             df.loc[:, 'code'] = df.loc[:, 'site']
-        return df.loc[:, ['time', 'lat', 'lon', 'alt', 'height', 'code', 'kindz']].drop_duplicates()
+        if "obsid" in df :
+            return df.loc[:, ['time', 'lat', 'lon', 'alt', 'height', 'code', 'kindz', 'obsid']].drop_duplicates(subset=['obsid'])
+        else :
+            return df.loc[:, ['time', 'lat', 'lon', 'alt', 'height', 'code', 'kindz']].drop_duplicates()
