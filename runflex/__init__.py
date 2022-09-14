@@ -1,20 +1,13 @@
 #!/usr/bin/env python
 
+from importlib import resources
 import sys
+from pathlib import Path
 
-try :
-    from tqdm import tqdm
 
-except :
-    class Tqdm:
-        def __init__(self):
-            pass
-
-        def __call__(self, iterable, *args, **kwargs):
-            return iterable
-
-        def write(self, message):
-            sys.stdout.write(message)
-            sys.stdout.write('\n')
-
-    tqdm = Tqdm()
+# Determine if we are in a local installation or in a system (or env-) installation (i.e. if pip was called with -e option or not):
+prefix = resources.files("runflex")
+if Path(sys.prefix) in prefix.parents :
+    prefix = Path(sys.prefix).joinpath('share/flexpart')
+else :
+    prefix = prefix.parent

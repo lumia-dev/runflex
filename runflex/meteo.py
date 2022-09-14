@@ -1,210 +1,122 @@
-#!/bin/env python
+#!/usr/bin/env python
 
-import os
-import glob
-import logging
-from runflex.logging_tools import logging
+from pandas import Timedelta, Timestamp, date_range
+from dataclasses import dataclass
+from typing import List
+from datetime import datetime
+from loguru import logger
 from time import sleep
 import subprocess
-from datetime import datetime, timedelta
-import shutil
-from numpy import array
-
-logger = logging.getLogger(__name__)
+import os
+from pathlib import Path
+import glob
 
 
-class LocalArchive:
-    def __init__(self, key):
-        self.path = key
-    
-    def get(self, filename, count=0):
-        # Construct the full archived file path:
-        dest, filename = os.path.split(filename)
-        date = datetime.strptime(filename[2:], '%Y%m%d%H')
-        fpath = os.path.join(self.path, str(date.year), str(date.month))
-        fname = os.path.join(fpath, filename)
+@dataclass
+class Archive:
+    address : str
+    lockfile : str = None
+    lock_expire : int = 3600
+    max_attempts : int = 3
 
-        # Try to get the file:
-        if os.path.exists(fname):
-            shutil.copy2(fname, dest)
-        else :
-            return False
-        
-        # Check if the file is now there:
-        if os.path.exists(os.path.join(dest, filename)):
-            return True
-        elif count < 5 : # If it's still not there, retry, up to 5 times.
-            sleep(count+1)
-            return self.get(filename, count=count+1)
-        else : # If after 5 tries, it's still not there, return False
-            return False
+    def get(self, files: List[str], dest: Path, attempt_nb : int = 0) -> bool:
+        if not self.address:
+            return self.check(files, dest)
 
+        with open(self.lockfile, 'a') as fid :
+            fid.writelines(file+'\n' for file in files)
 
-class RcloneArchive:
-    def __init__(self, key, lockfile_path='/${TMPDIR}/${USER}/', lockfile_expire=3600., lockfile='runflex.rclone.meteo.lock'):
-        _, self.remote, self.path = key.split(':')
-        self.lockfile = os.path.join(lockfile_path, lockfile)
-        self.remote_structure = {}
-        self.remote_files = []
-        self.lock_expire = lockfile_expire
+        subprocess.run(['rclone', 'copy', '-P', '--files-from', self.address, self.lockfile, dest])
 
-    def get(self, filename):
-        self._acquire_lock()
+        while not self.check(files, dest) :
+            if attempt_nb == self.max_attempts :
+                return False
+            return self.get(files, dest, attempt_nb + 1)
+        return True
 
-        # Get the path on the archive:
-        dest, filename = os.path.split(filename)
-        date = datetime.strptime(filename[2:], '%y%m%d%H')
-        path = os.path.join(self.path, str(date.year), str(date.month))
+    @staticmethod
+    def check(files: List[str], dest: Path) -> bool:
+        files_missing = any(not os.path.exists(os.path.join(dest, f)) for f in files)
+        return not files_missing
 
-        # Get the list of files in the rclone repo, in the same folder (only if we are in a new folder)
-        success = False
-        if path not in self.remote_structure :
-            logger.info(f"Retrieving list of files in rclone folder {self.remote}:{path})")
-            try :
-                self.remote_structure[path] = subprocess.check_output(['rclone', 'lsf', f'{self.remote}:{path}'], universal_newlines=True).split('\n')
-            except subprocess.CalledProcessError :
-                # Previous command will return an exception if the path doesn't exist. 
-                logger.warning(f"Path {self.remote}:{path} not found on rclone archive")
-                self.remote_structure[path] = []
-        
-        # Retrieve the file
-        if filename in self.remote_structure[path] :
-            cmd = ['rclone', 'copy', f'{self.remote}:{path}/{filename}', dest]
-            logger.warning(' '.join(cmd))
-            _ = subprocess.run(cmd)
-            success = os.path.exists(dest)
-
-        self._release_lock()
-        return success
-
-    def _acquire_lock(self):
+    def __enter__(self) -> "Archive":
+        """
+        Check for the existence of a lockfile. Normally, all "Tasks" handled by a same "Manager" share the same uid, and therefore the same lockfile. So this avoids that two tasks try to retrieve data in the same time.
+        If the lockfile is too old (default: 3600 seconds), then the lock is released.
+        """
+        nsec = 1.
         while os.path.exists(self.lockfile):
+            sleep(nsec)
             # Get the age of the file:
-            if datetime.now().timestamp()-os.path.getctime(self.lockfile) > self.lock_expire:
-                self._release_lock(warn=f'Removing expired lock file {self.lockfile}')
-            logger.warning(f"Meteo lock file found {self.lockfile}, waiting 30 seconds")
-            sleep(30)
+            try :
+                if datetime.now().timestamp() - os.path.getctime(self.lockfile) > self.lock_expire:
+                    self.release_lock(warn=f'Removing expired lock file {self.lockfile}')
+                logger.info(f"Meteo lock file found {self.lockfile}, waiting {nsec} seconds")
+            except FileNotFoundError:
+                # It can happen that the file has been deleted between the "while" statement and the "os.path.getctime" one.
+                # Then just stay in the while loop and test again.
+                pass
+            nsec = min(nsec + 5, 30)
         open(self.lockfile, 'a').close()
+        return self
 
-    def _release_lock(self, warn=False):
-        if warn:
+    def __exit__(self, exception_type, exception_value, traceback):
+        self.release_lock()
+
+    def release_lock(self, warn: str = None):
+        if warn :
             logger.warning(warn)
         try :
+            Path(self.lockfile).unlink(missing_ok=True)
             os.remove(self.lockfile)
         except FileNotFoundError :
             # If for some reason, the lock has been removed by another way, just pass
             pass
 
 
-class Archive:
-    def __init__(self, key, *attrs, **kwattrs):
-        self.key = key
-        if os.path.isdir(key):
-            self.type = 'local'
-        elif key.startswith('rclone:'):
-            self.archive = RcloneArchive(key, *attrs, **kwattrs)
-        else : 
-            logger.error(f"Un-recognized meteo archive: {key}")
-            raise RuntimeError
-        self.get = self.archive.get
-
-
+@dataclass(kw_only=True)
 class Meteo:
-    def __init__(self, path, archive=None, prefix='EN', tres=None, minspace=None, minage=None, **kwargs):
+    path : Path
+    archive : str
+    tres : Timedelta
+    prefix : str = 'EA'
+    lockfile : str = 'runflex.rclone.meteo.lock'
+
+    def __post_init__(self):
+        # Put the lockfile in the same directory as the meteo files, unless a specific path is provided
+        if not os.path.dirname(self.lockfile):
+            self.lockfile = os.path.join(self.path, self.lockfile)
+
+    def __setattr__(self, key, value):
+        if key in ['tres', 'path']:
+            try :
+                value = self.__annotations__[key](value)
+            except (TypeError, ValueError) as e:
+                logger.critical(f"Can't convert value {key} (value {value}) to {type} ")
+                raise e
+        super().__setattr__(key, value)
+
+    def check_unmigrate(self, start: Timestamp, end: Timestamp) -> bool:
+
+        # Generate the list of files
+        files = self.gen_filelist(start, end)
+
+        # Attempt to clone files from archive:
+        with Archive(self.archive, lockfile=self.lockfile) as archive :
+            return archive.get(files, self.path)
+
+    def gen_filelist(self, start: Timestamp, end: Timestamp) -> List[str]:
         """
-        path (str): folder where meteo files will be read-in by FLEXPART
-        prefix (str): prefix of the meteo files (e.g. ENXXXXXXXX)
-        tres (timedelta): time interval between two meteo files
-        archive (str): path to a meteo archive
+        Generate a list of meteo files that FLEXPART will need.
         """
-        self.path = path
-        self.prefix = prefix
-        self.tres = tres
-        if archive is not None :
-            archive = Archive(archive, lockfile_path=path, **kwargs)
-        self.archive = archive
-        if not os.path.isdir(self.path):
-            os.makedirs(self.path)
+        times = date_range(start - self.tres, end + self.tres, freq=self.tres)
+        return [f'{self.prefix}{tt:%y%m%d%H}' for tt in times]
 
-    def genFileList(self, ti, tf, safe=True):
-        """
-        Generate a list of meteo files that the FLEXPART run will look for. Arguments are:
-        - ti (datetime): start date
-        - tf (datetime): final date
-        - safe (bool): add one day before and after the requested period, to be sure we don't miss anything (default for now)
-        returns a list of meteo file filenames
-        """
-
-        # Add safety margins 
-        if safe:
-            ti = datetime(ti.year, ti.month, ti.day)-timedelta(1)
-            tf = tf+self.tres+timedelta(1)
-        fname = []
-        while ti <= tf :
-            fname.append(os.path.join(self.path, ti.strftime(f'{self.prefix}%y%m%d%H')))
-            ti += self.tres
-        return fname
-
-    def checkUnmigrate(self, ti, tf):
-
-        # 1) Generate the list of files
-        files = self.genFileList(ti, tf)
-        fails = []
-
-        # 2) Check if the file is present
-        for file in files :
-
-            # 3) Download it from archive if it's missing
-            if not os.path.exists(file):
-                success = False
-                if self.archive is not None :
-                    success = self.archive.get(file)
-                if not success :
-                    fails.append(file)
-
-        if fails :
-            msg = "Not all meteo files could be retrieved:\n"
-            for fail in fails:
-                msg += f"   {fail}\n"
-            logger.error(msg)
-            raise RuntimeError
-
-    def genAvailableFile(self, fname):
-        flist = glob.glob('%s/%s*'%(self.path, self.prefix))
-
-        # Get the times of the files on disk
-        times = []
-        for ff in sorted(flist):
-            times.append(datetime.strptime(os.path.basename(ff), self.prefix+'%y%m%d%H'))
-
-        # Build the AVAILABLE file, line by line:
-        lines = ['\n']*3
-        lines.extend([l.strftime(f'%Y%m%d %H%M%S      {self.prefix}%y%m%d%H         ON DISC\n') for l in sorted(times)])
-
-        # Write:
-        with open(fname, 'w') as fid:
-            fid.writelines(lines)
-
-    def cleanup(self, minspace, minage):
-        """
-        minspace (int): minimum space (in Gb) that should be on the disk. Leave to None for disabling the cleanup
-        minage (int): minimum age (in hours) of the meteo files that can be deleted
-        """
-
-        minspace = minspace*1024**3
-
-        if shutil.disk_usage(self.path).free < minspace : 
-            # List all the meteo files in the folder
-            files = glob.glob(os.path.join(self.path, f'{self.prefix}????????'))
-
-            # Find their age, in hours
-            ref = datetime.today().timestamp()
-            ages = (array([os.path.getatime(f) for f in files])-ref)/3600.
-
-            # Select only the files older than minage
-            files = files[ages > minage]
-            files = files.sort(key=os.path.getatime, reverse=False)
-
-            # Delete files, starting from the older ones, until no files are left or until there is enough space:
-            while shutil.disk_usage(self.path).free < minspace:
-                os.remove(files.pop[0])
+    def write_AVAILABLE(self, filepath: str) -> None:
+        fmt = f'{self.prefix}????????'
+        flist = glob.glob(os.path.join(self.path, fmt))
+        times = [datetime.strptime(os.path.basename(f), f'{self.prefix}%y%m%d%H') for f in flist]
+        with open(filepath, 'w') as fid :
+            fid.writelines(['\n']*3)
+            for tt in sorted(times) :
+                fid.write(tt.strftime(f'%Y%m%d %H%M%S      {self.prefix}%y%m%d%H         ON DISC\n'))

@@ -1,0 +1,10 @@
+paths :
+  src : ${prefix:src/flexpart10.4}
+  extras : ${prefix:src/extras}
+  build : ${prefix:build/flexpart}
+  makefile : makefile.singularity.gfortran
+  command : ${pkg:COMMAND}
+
+run :
+  logfile : ${paths.run}/flexpart.out
+
