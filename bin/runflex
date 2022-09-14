@@ -11,13 +11,13 @@ from pathlib import Path
 from pandas import Timestamp
 
 # Pyflex
-from pyflex.observations import Observations
-from pyflex.manager import QueueManager
-from pyflex.compile import Flexpart
-from pyflex.config import OmegaConf, getfile
+from runflex.observations import Observations
+from runflex.manager import QueueManager
+from runflex.compile import Flexpart
+from runflex.config import OmegaConf, getfile
 
 # Types
-from pyflex.config import DictConfig
+from runflex.config import DictConfig
 from typing import List, Union
 
 

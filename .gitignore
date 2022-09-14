@@ -7,3 +7,4 @@ runflex/runflex
 *.xml
 .idea/
 /singularity/*.sif
+*.sif
