@@ -26,12 +26,12 @@ From: ubuntu:20.04
 
     # Create a conda environment and make sure it is automatically activated
     . /opt/conda/etc/profile.d/conda.sh
-    conda create -y -n flexpart python=3.10
-    conda activate flexpart
+    conda create -y -n runflex python=3.10
+    conda activate runflex
 python3 -m pip install loguru pandas tqdm netcdf4 tables h5py omegaconf ipython
     export LC_ALL=C
     echo ". /opt/conda/etc/profile.d/conda.sh" >> $SINGULARITY_ENVIRONMENT
-    echo "conda activate flexpart" >> $SINGULARITY_ENVIRONMENT
+    echo "conda activate runflex" >> $SINGULARITY_ENVIRONMENT
 
     # Make directories
     mkdir /meteo       # The meteo must be in that path (or it will be downloaded there!)
@@ -52,6 +52,13 @@ python3 -m pip install loguru pandas tqdm netcdf4 tables h5py omegaconf ipython
     export CONDA_ENVS_PATH=/opt/conda/envs
 
 %runscript
-    . /opt/conda/etc/profile.d/conda.sh
-    conda activate /opt/conda/envs/flexpart
-    bash
+    if [ $# -ne 0 ]
+    then
+        . /opt/conda/etc/profile.d/conda.sh
+        conda activate /opt/conda/envs/runflex
+        runflex $@
+    else
+        . /opt/conda/etc/profile.d/conda.sh
+        conda activate /opt/conda/envs/runflex
+        bash
+    fi

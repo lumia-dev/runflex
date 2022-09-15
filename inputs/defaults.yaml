@@ -3,7 +3,7 @@ paths :
   extras : ${prefix:src/extras}
   build : ${prefix:build/flexpart}
   makefile : makefile.singularity.gfortran
-  command : ${pkg:COMMAND}
+  command : ${file:COMMAND}
 
 run :
   logfile : ${paths.run}/flexpart.out

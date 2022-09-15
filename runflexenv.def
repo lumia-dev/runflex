@@ -58,6 +58,13 @@ From: ubuntu:20.04
     . /runflex
 
 %runscript
-    . /opt/conda/etc/profile.d/conda.sh
-    conda activate /opt/conda/envs/runflex
-    bash
+    if [ $# -ne 0 ]
+    then
+        . /opt/conda/etc/profile.d/conda.sh
+        conda activate /opt/conda/envs/runflex
+        runflex $@
+    else
+        . /opt/conda/etc/profile.d/conda.sh
+        conda activate /opt/conda/envs/runflex
+        bash
+    fi
