@@ -7,20 +7,24 @@ from loguru import logger
 import os
 from pathlib import Path
 import glob
+from numpy import array, argsort
+from runflex.archive import Rclone
 
 
 @dataclass(kw_only=True)
 class Meteo:
     path : Path
-    archive : str
+    archive : Rclone
     tres : Timedelta
     prefix : str = 'EA'
-    lockfile : Path = 'runflex.rclone.meteo.lock'
+    #lockfile : Path = 'runflex.rclone.meteo.lock'
+    task_id : int = None
 
     def __post_init__(self):
         # Put the lockfile in the same directory as the meteo files, unless a specific path is provided
-        if not os.path.dirname(self.lockfile):
-            self.lockfile = self.path.joinpath(self.lockfile)
+    #    if not os.path.dirname(self.lockfile):
+    #        self.lockfile = self.path.joinpath(self.lockfile)
+        self.path = Path(self.path)
 
     def __setattr__(self, key, value):
         if key in ['tres', 'path']:
@@ -37,8 +41,13 @@ class Meteo:
         files = self.gen_filelist(start, end)
 
         # Attempt to clone files from archive:
-        with self.archive as archive:
-            return archive.get(files, self.path)
+        info = None if self.task_id is None else f'task {self.task_id}'
+        success = self.archive.get(files, self.path, info=info)
+
+        # touch all the files so that they don't get removed:
+        _ = [Path(f).touch() for f in files.file if Path(f).exists()]
+
+        return success
 
     def gen_filelist(self, start: Timestamp, end: Timestamp) -> DataFrame:
         """
@@ -55,3 +64,27 @@ class Meteo:
             fid.writelines(['\n']*3)
             for tt in sorted(times) :
                 fid.write(tt.strftime(f'%Y%m%d %H%M%S      {self.prefix}%y%m%d%H         ON DISC\n'))
+
+    def cleanup(self, threshold: Timedelta = Timedelta(0), nfilesmin : int = None):
+        """
+        Remove old meteo files. The one with the oldest last access time will be removed in priority
+        :param threshold: Age threshold below which the files won't be removed
+        :param nfilesmax: Minimum number of files to keep.
+        """
+
+        # At least one of the two options need to be set
+        if threshold.total_seconds() == 0 and nfilesmin is None :
+            logger.warning("Meteo cleanup required, but no restraining factor requested. Skipping the cleanup")
+            return
+
+        files = array([_ for _ in self.path.glob(f'{self.prefix}????????')])
+        atime = array([Timedelta(hours=_.stat().st_atime_ns / 1.e9 / 3600 / 3600) for _ in files])
+
+        # if a min number of files is requested, remove them from the pool of
+        # "deletable" files.
+        if nfilesmin and nfilesmin > len(files):
+            files = files[argsort(atime)][nfilesmin:]
+            atime = atime[argsort(atime)][nfilesmin:]
+
+        # Remove the remaining files
+        _ = [f.unlink() for f in files[atime > threshold]]
