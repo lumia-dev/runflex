@@ -50,10 +50,6 @@ class Task:
 
         self.rundir = checkpath(self.rundir).absolute()
 
-        # Remove pre-existing files if requested:
-        if self.rcf.run.get('clean', False):
-            [_.unlink() for _ in self.rundir.rglob('*') if _.is_file()]
-
         # Make sure rc-variables are updated
         self.rcf.paths.run = self.rundir
 
@@ -139,10 +135,13 @@ class Task:
             archive = self.rcf.meteo.get('archive', None),
             prefix = self.rcf.meteo.prefix,
             tres = self.rcf.meteo.interv,
-            lockfile = f'runflex.rclone.meteo.lock.{self.uid}'
+            #lockfile = Path(f'runflex.rclone.meteo.lock.{self.uid}'),
+            task_id = self.jobid
         )
         meteo.check_unmigrate(self.start, self.end)
         meteo.write_AVAILABLE(os.path.join(self.rundir, 'AVAILABLE'))
+        if self.rcf.meteo.get('cleanup', False) :
+            meteo.cleanup(threshold=self.rcf.meteo.cleanup.threshold, nfilesmin=self.rcf.meteo.cleanup.nfilesmin)
 
     def setup_pathnames(self) -> None:
         with open(os.path.join(self.rundir, 'pathnames'), 'w') as fid:
@@ -201,11 +200,15 @@ class Task:
 
         # Run FLEXPART
         if not self.interactive :
-            logger.add(sys.stdout, colorize=True, enqueue=True)
-            logfile = self.rcf.run.logfile
-            with open(logfile, 'a') as fid :
+            log_id = logger.add(sys.stdout, colorize=True, enqueue=True)
+            with open(self.rcf.run.logfile, 'a') as fid :
                 self.status = self.runflexpart(fid)
-            logger.success(f'Task {self.jobid} completed ({logfile})')
+            match self.status :
+                case 'success':
+                    logger.success(f'Task {self.jobid} completed ({self.rcf.run.logfile})')
+                case 'failed':
+                    logger.error(f'Task {self.jobid} failed ({self.rcf.run.logfile})')
+            logger.remove(log_id)
         else :
             self.status = self.runflexpart(sys.stdout)
 
