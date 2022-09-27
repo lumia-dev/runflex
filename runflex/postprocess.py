@@ -12,6 +12,8 @@ from numpy.typing import NDArray
 from types import SimpleNamespace
 from numpy import nonzero, meshgrid, array
 from runflex.utilities import checkpath
+import git
+import runflex
 
 
 @dataclass
@@ -110,7 +112,7 @@ class LumiaFile(File):
         gr['itims'] = release.footprint.itime
         gr['sensi'] = release.footprint.sensi
         gr['sensi'].attrs['units'] = release.specie['units']
-        gr['sensi'].attrs['runflex_version'] = Timestamp.today().strftime('%Y.%-m.%-d')
+        gr['sensi'].attrs['runflex_version'] = git.Repo(runflex.__path__[0], search_parent_directories=True).head.object.committed_datetime.strftime('%Y.%-m.%-d')
         for k, v in release.release_attributes.items():
             if isinstance(v, Timestamp):
                 v = str(v)

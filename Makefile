@@ -20,7 +20,7 @@ clean:
 	pip uninstall runflex
 
 container:
-	sudo singularity build runflex.sif runflex.def
+	singularity build --fakeroot runflex.sif runflex.def
 
 envcontainer:
-	sudo singularity build runflexenv.sif runflexenv.def
+	singularity build --fakeroot runflexenv.sif runflexenv.def
