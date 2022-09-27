@@ -8,3 +8,4 @@ runflex/runflex
 .idea/
 /singularity/*.sif
 *.sif
+/runflex.egg-info
