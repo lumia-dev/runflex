@@ -146,19 +146,17 @@ def calc_footprints(conf : DictConfig) -> Union[Observations, QueueManager]:
     obs = load_obs(conf)
 
     contd = conf.get('continue', True)
-    dry_run = conf.get('dry_run', False)
     outpth = conf.paths.output
 
     # Cleanup can remove anything that is in paths.run or paths.output, so disabled by default
     if conf.run.get('cleanup', False) :
-        shutil.rmtree(conf.paths['run'], ignore_errors=True)
+        shutil.rmtree(conf.paths.run, ignore_errors=True)
         shutil.rmtree(outpth, ignore_errors=True)
 
-    # If it's a continuation (default True) or just a dry-run, check which footprints already exist:
-    if contd or dry_run:
+    # If it's a continuation (default True), check which footprints already exist:
+    if contd:
         missing = handle_missing(obs, outpth)
-        if contd:
-            obs = obs.loc[missing]
+        obs = obs.loc[missing]
         if not any(missing):
             return obs
 
@@ -206,7 +204,6 @@ if __name__ == '__main__':
     p_footprints.add_argument('--serial', '-i', action='store_true', default=False)
     p_footprints.add_argument('--ncpus', '-n', help='Number of parallell processes', default=None, type=int)
     p_footprints.add_argument('--cleanup', action='store_true', default=False, help="Ensure that the rundir is clear from previous runs (set to False by default as this will erase anything in the scratch dir, even if it doesn't belong to runflex!)")
-    p_footprints.add_argument('--dry-run', action='store_true', default=False)
 
     # Parse arguments
     args = p.parse_args(sys.argv[1:])

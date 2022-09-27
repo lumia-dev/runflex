@@ -22,7 +22,7 @@ setuptools.setup(
             "Operating System :: OS Independent",
         ],
         python_requires='>=3.10',
-        install_requires=['loguru', 'pandas', 'tqdm', 'netcdf4', 'tables', 'h5py', 'omegaconf'],
+        install_requires=['loguru', 'pandas', 'tqdm', 'netcdf4', 'tables', 'h5py', 'omegaconf', 'git'],
         extras_require={'interactive': ['ipython']},
         data_files=[
                 ('share/flexpart/inputs/', data_files),

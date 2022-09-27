@@ -7,4 +7,11 @@ paths :
 
 run :
   logfile : ${paths.run}/flexpart.out
+  continue : True
+  cleanup : False
 
+releases :
+  mass : ${releases.npart}
+
+postprocess :
+  lumia : True
