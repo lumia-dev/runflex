@@ -185,7 +185,7 @@ class Task:
         self.copy_datafiles()
 
         # flexpart.x
-        self.flexpart.setup(os.path.join(self.rundir, 'flexpart.x'))
+        self.flexpart.setup(Path(self.rundir) / 'flexpart.x')
 
     def run(self) -> "Task":
 

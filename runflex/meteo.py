@@ -69,7 +69,7 @@ class Meteo:
         """
         Remove old meteo files. The one with the oldest last access time will be removed in priority
         :param threshold: Age threshold below which the files won't be removed
-        :param nfilesmax: Minimum number of files to keep.
+        :param nfilesmin: Minimum number of files to keep.
         """
 
         # At least one of the two options need to be set

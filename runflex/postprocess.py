@@ -1,5 +1,4 @@
 #!/usr/bin/env python
-import sys
 from netCDF4 import Dataset, chartostring
 from h5py import File
 from pandas import DataFrame, Timestamp, Timedelta
@@ -72,7 +71,6 @@ class LumiaFile(File):
                 wait += count
                 self.__init__(*args, count=count, wait=wait, **kwargs)
             else :
-                #logger.add(sys.stdout, colorize=True) # Make sure that this is reported in the main log file
                 logger.error(f"Couldn't open file {args[0]} (File busy?)")
                 raise e
 
@@ -112,7 +110,9 @@ class LumiaFile(File):
         gr['itims'] = release.footprint.itime
         gr['sensi'] = release.footprint.sensi
         gr['sensi'].attrs['units'] = release.specie['units']
-        gr['sensi'].attrs['runflex_version'] = git.Repo(runflex.__path__[0], search_parent_directories=True).head.object.committed_datetime.strftime('%Y.%-m.%-d')
+        commit = git.Repo(runflex.__path__[0], search_parent_directories=True).head.object
+        gr['sensi'].attrs['runflex_version'] = commit.committed_datetime.strftime('%Y.%-m.%-d')
+        gr['sensi'].attrs['runflex_commit'] = f'{commit.hexsha} ({commit.committed_datetime})'
         for k, v in release.release_attributes.items():
             if isinstance(v, Timestamp):
                 v = str(v)
@@ -130,7 +130,7 @@ class GridTimeFile:
         self.coordinates = SimpleNamespace(
             lon=self['longitude'][:].data,
             lat=self['latitude'][:].data,
-            time=array([self.end + Timedelta(seconds=_) -self.dt/2 for _ in self['time'][:].data])
+            time=array([self.end + Timedelta(seconds=_) - self.dt/2 for _ in self['time'][:].data])
         )
         self.species = vars(self['spec001_mr'])
         self.params = vars(self.ds)

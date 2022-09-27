@@ -37,7 +37,7 @@ class Lock:
             try :
                 self.lock = File(self.filename, mode='w')
                 return self
-            except (OSError, BlockingIOError) as e :
+            except (OSError, BlockingIOError) :
                 if datetime.now().timestamp() - Path(self.filename).stat().st_mtime > self.timeout:
                     self.release(warn=f'Removing expired lock file {self.filename}')
                 logger.info(f"Lock file found {self.filename}, waiting {self.delay} seconds")
@@ -52,7 +52,7 @@ class Lock:
 
 
 class Rclone:
-    def __init__(self, address: str, lockfile: str = None, lock_expire: int = 3600, max_attempts: int=3):
+    def __init__(self, address: str, lockfile: str = None, lock_expire: int = 3600, max_attempts: int = 3):
         """
         :param address: location of the rclone repo
         :param lockfile: path to the lock file.
@@ -100,7 +100,7 @@ class Rclone:
             return self.get(files_list, dest, attempts_nb + 1)
         return True
 
-    def retrieve(self, files: List[str], dest: Path, source: str = '', info: str =''):
+    def retrieve(self, files: List[str], dest: Path, source: str = '', info: str = ''):
         """
         :param files: list of files to be retrieved
         :param dest: destination directory
@@ -109,7 +109,7 @@ class Rclone:
         :return:
         """
 
-        with Lock(self.lockfile) as lockf:
+        with Lock(self.lockfile) as _:
             with open(self.filelist, 'w') as fid:
                 fid.writelines(file+'\n' for file in files)
 

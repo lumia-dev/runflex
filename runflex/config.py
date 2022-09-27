@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
-from omegaconf import OmegaConf, DictConfig
+from omegaconf import OmegaConf
 from runflex import prefix
 from runflex.utilities import getfile
 from runflex.archive import Rclone
