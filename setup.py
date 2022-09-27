@@ -9,7 +9,6 @@ data_files = [_ for _ in glob.glob('inputs/**', recursive=True) if os.path.isfil
 data_files += glob.glob('build/flexpart/flexpart.x')
 
 
-
 setuptools.setup(
         name="runflex",
         version="1.0",

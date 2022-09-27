@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-
+import sys
 from netCDF4 import Dataset, chartostring
 from h5py import File
 from pandas import DataFrame, Timestamp, Timedelta
@@ -62,13 +62,15 @@ class LumiaFile(File):
         maxcount = 20
         try :
             super().__init__(*args, **kwargs)
-        except OSError as e:
+        except (OSError, BlockingIOError) as e:
             if count < maxcount :
                 logger.info(f"Waiting {wait} sec for the access to file {args[0]}")
                 time.sleep(wait)
                 count += 1
+                wait += count
                 self.__init__(*args, count=count, wait=wait, **kwargs)
             else :
+                #logger.add(sys.stdout, colorize=True) # Make sure that this is reported in the main log file
                 logger.error(f"Couldn't open file {args[0]} (File busy?)")
                 raise e
 
@@ -108,6 +110,7 @@ class LumiaFile(File):
         gr['itims'] = release.footprint.itime
         gr['sensi'] = release.footprint.sensi
         gr['sensi'].attrs['units'] = release.specie['units']
+        gr['sensi'].attrs['runflex_version'] = Timestamp.today().strftime('%Y.%-m.%-d')
         for k, v in release.release_attributes.items():
             if isinstance(v, Timestamp):
                 v = str(v)
