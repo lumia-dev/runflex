@@ -26,7 +26,6 @@ class JobInfo:
     rcf: DictConfig
     releases: Releases
     jobid: int
-    uid: str = None
     status : str = None
 
     @property
@@ -42,7 +41,6 @@ class Task:
     jobid : int = None
     start : Timestamp = None
     end : Timestamp = None
-    uid : str = next(tempfile._get_candidate_names())
     interactive : bool = False
     status : str = None
 
@@ -74,7 +72,6 @@ class Task:
         tmin = tmin - Timedelta(days=lenmax)
 
         command = Command.read(self.rcf.paths.command)
-        # command = Command.from_namelist(self.rcf.paths.command)
         if 'command' in self.rcf :
             command.update(self.rcf.command)
 
@@ -135,8 +132,8 @@ class Task:
             archive = self.rcf.meteo.get('archive', None),
             prefix = self.rcf.meteo.prefix,
             tres = self.rcf.meteo.interv,
-            #lockfile = Path(f'runflex.rclone.meteo.lock.{self.uid}'),
-            task_id = self.jobid
+            task_id = self.jobid,
+            logfile = self.rcf.meteo.get('logfile', sys.stdout)
         )
         meteo.check_unmigrate(self.start, self.end)
         meteo.write_AVAILABLE(os.path.join(self.rundir, 'AVAILABLE'))

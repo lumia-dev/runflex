@@ -8,7 +8,6 @@ import argparse
 from argparse import ArgumentParser
 from netCDF4 import Dataset
 from pathlib import Path
-from pandas import Timestamp
 
 # Pyflex
 from runflex.observations import Observations
@@ -17,7 +16,7 @@ from runflex.compile import Flexpart
 from runflex.config import OmegaConf, getfile
 
 # Types
-from runflex.config import DictConfig
+from omegaconf import DictConfig
 from typing import List, Union
 
 

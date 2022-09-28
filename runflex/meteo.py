@@ -1,4 +1,5 @@
 #!/usr/bin/env python
+import sys
 
 from pandas import Timedelta, Timestamp, date_range, DataFrame
 from dataclasses import dataclass
@@ -9,6 +10,7 @@ from pathlib import Path
 import glob
 from numpy import array, argsort
 from runflex.archive import Rclone
+import io
 
 
 @dataclass(kw_only=True)
@@ -17,13 +19,10 @@ class Meteo:
     archive : Rclone
     tres : Timedelta
     prefix : str = 'EA'
-    #lockfile : Path = 'runflex.rclone.meteo.lock'
     task_id : int = None
+    logfile : io.FileIO = sys.stdout
 
     def __post_init__(self):
-        # Put the lockfile in the same directory as the meteo files, unless a specific path is provided
-    #    if not os.path.dirname(self.lockfile):
-    #        self.lockfile = self.path.joinpath(self.lockfile)
         self.path = Path(self.path)
 
     def __setattr__(self, key, value):
@@ -42,6 +41,7 @@ class Meteo:
 
         # Attempt to clone files from archive:
         info = None if self.task_id is None else f'task {self.task_id}'
+        self.archive.logfile = self.logfile
         success = self.archive.get(files, self.path, info=info)
 
         # touch all the files so that they don't get removed:

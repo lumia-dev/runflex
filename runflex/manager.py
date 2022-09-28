@@ -11,15 +11,11 @@ import tempfile
 from tqdm import tqdm
 
 
-uid = next(tempfile._get_candidate_names())
-
-
 class QueueManager:
     def __init__(self, rcf: DictConfig, obs: DataFrame, serial: bool = False) -> None:
         self.rcf = rcf
         self.obs = Observations(obs)
-        self.uid = uid
-        self.rcfile = os.path.join(self.rcf.paths['global_scratch'], f'flexpart.{self.uid}.rc')
+        self.rcfile = os.path.join(self.rcf.paths.global_scratch, 'flexpart.rc')
         self.serial = serial
         self.ncpus = self.rcf.run.get('ncpus', None)
 
@@ -40,7 +36,7 @@ class QueueManager:
                 rcf=self.rcf,
                 releases=rl,
                 jobid=jobnum,
-                uid=self.uid,
+#                uid=self.uid,
             ))
 
         if chunks :

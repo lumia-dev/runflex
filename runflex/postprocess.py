@@ -10,9 +10,10 @@ from dataclasses import dataclass, field
 from numpy.typing import NDArray
 from types import SimpleNamespace
 from numpy import nonzero, meshgrid, array
-from runflex.utilities import checkpath
-import git
+
 import runflex
+from runflex.utilities import checkpath
+from git import Repo
 
 
 @dataclass
@@ -110,7 +111,7 @@ class LumiaFile(File):
         gr['itims'] = release.footprint.itime
         gr['sensi'] = release.footprint.sensi
         gr['sensi'].attrs['units'] = release.specie['units']
-        commit = git.Repo(runflex.__path__[0], search_parent_directories=True).head.object
+        commit = Repo(runflex.prefix).head.object
         gr['sensi'].attrs['runflex_version'] = commit.committed_datetime.strftime('%Y.%-m.%-d')
         gr['sensi'].attrs['runflex_commit'] = f'{commit.hexsha} ({commit.committed_datetime})'
         for k, v in release.release_attributes.items():
