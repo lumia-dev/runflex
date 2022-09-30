@@ -184,7 +184,7 @@ class Task:
         # flexpart.x
         self.flexpart.setup(Path(self.rundir) / 'flexpart.x')
 
-    def run(self) -> "Task":
+    def run(self, retry : bool = True) -> "Task":
 
         # Do not run the task if a "flexpart.ok" file has been found in the output folder (avoid overwriting existing data).
         if self.completed :
@@ -205,6 +205,9 @@ class Task:
                     logger.success(f'Task {self.jobid} completed ({self.rcf.run.logfile})')
                 case 'failed':
                     logger.error(f'Task {self.jobid} failed ({self.rcf.run.logfile})')
+                    if retry :
+                        # Make another attempt, sometimes it's enough ...
+                        self.run(retry=False)
             logger.remove(log_id)
         else :
             self.status = self.runflexpart(sys.stdout)

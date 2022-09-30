@@ -1,4 +1,5 @@
 #!/usr/bin/env python
+import time
 
 from pandas import DataFrame, Timedelta
 from typing import List
@@ -7,7 +8,6 @@ import os
 from runflex.tasks import Task, JobInfo
 from runflex.observations import Observations
 from omegaconf import DictConfig
-import tempfile
 from tqdm import tqdm
 
 
@@ -36,7 +36,6 @@ class QueueManager:
                 rcf=self.rcf,
                 releases=rl,
                 jobid=jobnum,
-#                uid=self.uid,
             ))
 
         if chunks :
@@ -56,6 +55,6 @@ class QueueManager:
         else :
             with Pool(processes=self.ncpus) as pp:
                 results = pp.imap(Task.run_from_JobInfo, tasks, chunksize=1)
-                tasks = [t for t in tqdm(results, total=len(tasks), )]
+                tasks = [(time.sleep(30), t) for t in tqdm(results, total=len(tasks), )]
 
         return tasks
