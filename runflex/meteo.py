@@ -45,7 +45,7 @@ class Meteo:
         success = self.archive.get(files, self.path, info=info)
 
         # touch all the files so that they don't get removed:
-        _ = [Path(f).touch() for f in files.file if Path(f).exists()]
+        _ = [Path(f).touch() for f in str(self.path) + '/' + files.file if Path(f).exists()]
 
         return success
 
@@ -78,13 +78,14 @@ class Meteo:
             return
 
         files = array([_ for _ in self.path.glob(f'{self.prefix}????????')])
-        atime = array([Timedelta(hours=_.stat().st_atime_ns / 1.e9 / 3600 / 3600) for _ in files])
+        atime = array([datetime.fromtimestamp(_.stat().st_atime) for _ in files])
+        age = datetime.now() - atime
 
         # if a min number of files is requested, remove them from the pool of
         # "deletable" files.
         if nfilesmin and nfilesmin > len(files):
-            files = files[argsort(atime)][nfilesmin:]
-            atime = atime[argsort(atime)][nfilesmin:]
+            files = files[argsort(age)][nfilesmin:]
+            age = age[argsort(age)][nfilesmin:]
 
         # Remove the remaining files
-        _ = [f.unlink() for f in files[atime > threshold]]
+        _ = [f.unlink() for f in files[age > threshold]]

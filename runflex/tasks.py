@@ -18,6 +18,10 @@ from typing import Union
 from pathlib import Path
 from runflex.files import Command, Outgrid
 from runflex.utilities import getfile
+from multiprocessing import RLock
+
+
+meteo_lock = RLock()
 
 
 @dataclass(kw_only=True)
@@ -127,18 +131,19 @@ class Task:
             shutil.copy(getfile(f'SPECIES_{spec:03.0f}'), os.path.join(self.rundir, 'SPECIES'))
 
     def setup_meteo(self) -> None:
-        meteo = Meteo(
-            path = self.rcf.paths.meteo,
-            archive = self.rcf.meteo.get('archive', None),
-            prefix = self.rcf.meteo.prefix,
-            tres = self.rcf.meteo.interv,
-            task_id = self.jobid,
-            logfile = self.rcf.meteo.get('logfile', sys.stdout)
-        )
-        meteo.check_unmigrate(self.start, self.end)
-        meteo.write_AVAILABLE(os.path.join(self.rundir, 'AVAILABLE'))
-        if self.rcf.meteo.get('cleanup', False) :
-            meteo.cleanup(threshold=self.rcf.meteo.cleanup.threshold, nfilesmin=self.rcf.meteo.cleanup.nfilesmin)
+        with meteo_lock :
+            meteo = Meteo(
+                path = self.rcf.paths.meteo,
+                archive = self.rcf.meteo.get('archive', None),
+                prefix = self.rcf.meteo.prefix,
+                tres = self.rcf.meteo.interv,
+                task_id = self.jobid,
+                logfile = self.rcf.meteo.get('logfile', sys.stdout)
+            )
+            meteo.check_unmigrate(self.start, self.end)
+            meteo.write_AVAILABLE(os.path.join(self.rundir, 'AVAILABLE'))
+            if self.rcf.meteo.get('cleanup', False) :
+                meteo.cleanup(threshold=self.rcf.meteo.cleanup.threshold, nfilesmin=self.rcf.meteo.cleanup.nfilesmin)
 
     def setup_pathnames(self) -> None:
         with open(os.path.join(self.rundir, 'pathnames'), 'w') as fid:

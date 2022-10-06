@@ -32,7 +32,7 @@ class Namelist:
 
     def update(self, fields : dict) -> None :
         for k, v in fields.items():
-            if k in self.fields :
+            if k.upper() in self.fields :
                 setattr(self, k.upper(), v)
 
     def write(self, filename : str, name : str = None, mode : str = 'w') -> str:

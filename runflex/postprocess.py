@@ -9,8 +9,7 @@ from loguru import logger
 from dataclasses import dataclass, field
 from numpy.typing import NDArray
 from types import SimpleNamespace
-from numpy import nonzero, meshgrid, array
-
+from numpy import nonzero, meshgrid, array, int16
 import runflex
 from runflex.utilities import checkpath
 from git import Repo
@@ -106,9 +105,9 @@ class LumiaFile(File):
         # Store the release:
         gr = self.create_group(obsid)
         gr.attrs['History'] = msg
-        gr['ilons'] = release.footprint.ilon
-        gr['ilats'] = release.footprint.ilat
-        gr['itims'] = release.footprint.itime
+        gr['ilons'] = release.footprint.ilon.astype(int16)
+        gr['ilats'] = release.footprint.ilat.astype(int16)
+        gr['itims'] = release.footprint.itime.astype(int16)
         gr['sensi'] = release.footprint.sensi
         gr['sensi'].attrs['units'] = release.specie['units']
         commit = Repo(runflex.prefix).head.object

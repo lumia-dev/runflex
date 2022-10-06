@@ -55,6 +55,6 @@ class QueueManager:
         else :
             with Pool(processes=self.ncpus) as pp:
                 results = pp.imap(Task.run_from_JobInfo, tasks, chunksize=1)
-                tasks = [(time.sleep(30), t) for t in tqdm(results, total=len(tasks), )]
+                tasks = [t for t in tqdm(results, total=len(tasks), )]
 
         return tasks
