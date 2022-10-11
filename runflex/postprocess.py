@@ -58,7 +58,7 @@ class Release:
 
 
 class LumiaFile(File):
-    def __init__(self, *args, origin=None, count=0, wait=1, **kwargs):
+    def __init__(self, *args, origin : Timestamp, count : int = 0, wait : int = 1, **kwargs):
         # Open the file, but wait for it to be free if it's busy
         maxcount = 20
         try :
@@ -76,6 +76,7 @@ class LumiaFile(File):
 
         # Application attributes
         self.origin = origin
+        self.attrs['origin'] = self.origin
 
     def add(self, release: Release) -> None:
         # Make sure that all data is on the same time coordinates
@@ -84,6 +85,7 @@ class LumiaFile(File):
 
         # Store attributes:
         for k, v in release.run_attributes.items():
+            k = f'run_{k}'
             if k not in self.attrs :
                 self.attrs[k] = v
             elif v != self.attrs[k] :
@@ -104,7 +106,7 @@ class LumiaFile(File):
 
         # Store the release:
         gr = self.create_group(obsid)
-        gr.attrs['History'] = msg
+        gr.attrs['File_history'] = msg
         gr['ilons'] = release.footprint.ilon.astype(int16)
         gr['ilats'] = release.footprint.ilat.astype(int16)
         gr['itims'] = release.footprint.itime.astype(int16)
@@ -116,7 +118,7 @@ class LumiaFile(File):
         for k, v in release.release_attributes.items():
             if isinstance(v, Timestamp):
                 v = str(v)
-            gr.attrs[k] = v
+            gr.attrs[f'release_{k}'] = v
 
         logger.info(f"Added release {obsid} to file {self.filename}")
 
@@ -174,7 +176,7 @@ class GridTimeFile:
         irl = list(self.releases.name).index(release_name)
         return Release(
             data = self['spec001_mr'][0, irl, :, 0, :, :][::-1, :, :].data,
-            origin = self.end,
+            origin = self.start,
             dt = self.dt,
             grid=self.grid,
             release_attributes = self.releases.iloc[irl].to_dict(),
