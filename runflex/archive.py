@@ -78,14 +78,14 @@ class Rclone:
                 msg += f' ({info})'
 
             # adapted from https://gist.github.com/wholtz/14b3a3479fe9c70eefb2418f091d2103
-            cmd = f'rclone copy -P {os.path.join(self.address, source)} --include-from {fid.name} {dest}'.split()
+            cmd = f'rclone copy -P {os.path.join(self.address, source)} --include-from {fid.name} {dest}'
             logger.info(cmd)
             tqdm.get_lock()
             if isinstance(self.logfile, str):
                 self.logfile = open(self.logfile, 'a')
 
             with tqdm(total=100, desc=msg, unit="%", file=self.logfile) as pbar:
-                with Popen(cmd, stdout=PIPE, bufsize=1, universal_newlines=True) as proc:
+                with Popen(cmd.split(), stdout=PIPE, bufsize=1, universal_newlines=True) as proc:
                     for line in proc.stdout:
                         line = line.strip()
                         if line.startswith('Transferred:') and line.endswith('%'):

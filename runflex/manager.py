@@ -3,7 +3,7 @@ import time
 
 from pandas import DataFrame, Timedelta
 from typing import List
-from multiprocessing import Pool
+from multiprocessing import Pool, cpu_count
 import os
 from runflex.tasks import Task, JobInfo
 from runflex.observations import Observations
@@ -15,9 +15,9 @@ class QueueManager:
     def __init__(self, rcf: DictConfig, obs: DataFrame, serial: bool = False) -> None:
         self.rcf = rcf
         self.obs = Observations(obs)
-        self.rcfile = os.path.join(self.rcf.paths.global_scratch, 'flexpart.rc')
+        # self.rcfile = os.path.join(self.rcf.paths.global_scratch, 'flexpart.rc')
         self.serial = serial
-        self.ncpus = self.rcf.run.get('ncpus', None)
+        self.ncpus = self.rcf.run.get('ncpus', cpu_count())
 
     def dispatch(self, nobsmax: int = None, maxdt: Timedelta = '7D', skiptasks: List[int] = None, chunks : List[int] = None) -> List[Task]:
         tasks = self.create_tasks(nobsmax=nobsmax, maxdt=maxdt, skiptasks=skiptasks, chunks=chunks)

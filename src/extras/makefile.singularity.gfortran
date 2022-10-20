@@ -4,7 +4,7 @@ FLEXPART-SERIAL = flexpart.x
 
 FC       = gfortran
 LIBS     = -leccodes_f90 -leccodes -lm -DUSE_NCF -lnetcdff
-FFLAGS   = -O2 -m64 -cpp -mcmodel=medium -fconvert=little-endian -ffree-line-length-none -frecord-marker=4 -fbounds-check -I/usr/include/ -DUSE_NCF -lnetcdff -I/usr/include/x86_64-linux-gnu/ -I/usr/lib/x86_64-linux-gnu/fortran/gfortran-mod-15
+FFLAGS   = -O2 -m64 -cpp -mcmodel=medium -fconvert=little-endian -ffree-line-length-none -frecord-marker=4 -fbounds-check -I/usr/include/ -DUSE_NCF -lnetcdff -I/usr/include/x86_64-linux-gnu/  $(shell nf-config --fflags)
 LDFLAGS  = $(FFLAGS) ${LIBS}
 
 include dependencies
