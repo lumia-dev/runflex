@@ -4,6 +4,7 @@ paths :
   build : ${prefix:build/flexpart}
   makefile : makefile.singularity.gfortran
   command : ${file:COMMAND}
+  run : ${tmp:/var/tmp}
 
 run :
   logfile : ${paths.run}/flexpart.out
