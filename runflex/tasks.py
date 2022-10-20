@@ -132,13 +132,16 @@ class Task:
 
     def setup_meteo(self) -> None:
         with meteo_lock :
+            logfile = self.rcf.meteo.get('logfile', sys.stdout)
+            if self.interactive:
+                logfile = sys.stdout
             meteo = Meteo(
                 path = self.rcf.paths.meteo,
                 archive = self.rcf.meteo.get('archive', None),
                 prefix = self.rcf.meteo.prefix,
                 tres = self.rcf.meteo.interv,
                 task_id = self.jobid,
-                logfile = self.rcf.meteo.get('logfile', sys.stdout)
+                logfile = logfile
             )
             meteo.check_unmigrate(self.start, self.end)
             meteo.write_AVAILABLE(os.path.join(self.rundir, 'AVAILABLE'))

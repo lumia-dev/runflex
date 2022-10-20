@@ -94,11 +94,15 @@ def compile(conf: DictConfig) -> Flexpart :
 
 
 def load_obs(conf: DictConfig) -> Observations:
-    obs = Observations.read(conf.observations.file)
+    if 'file' in conf.observations:
+        obs = Observations.read(conf.observations.file)
+    elif 'coordinates' in conf.observations:
+        obs = Observations.from_coordinates(conf.observations.coordinates)
+
     obs = obs.select(time_range = (conf.observations.get('start', '1900'), conf.observations.get('end', '2100')),
                      lat_range = conf.outgrid.y[:2],
                      lon_range = conf.outgrid.x[:2],
-                     include = conf.observations.get('sites', None),
+                     include = conf.observations.get('include', None),
                      exclude = conf.observations.get('exclude', None))
 
     # Select only the first n observations (for debug ...)

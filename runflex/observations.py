@@ -1,5 +1,5 @@
 #!/usr/bin/python
-from pandas import DataFrame, read_csv, read_hdf, Timedelta
+from pandas import DataFrame, read_csv, read_hdf, Timedelta, date_range, concat
 import tarfile
 from loguru import logger
 from typing import List, Protocol, Union, Type
@@ -34,6 +34,55 @@ class Observations(DataFrame):
     @property
     def _constructor(self):
         return Observations
+
+    @classmethod
+    def from_coordinates(cls, conf: dict) -> "Observations":
+        """
+        Create a footprint list at regular time intervals, based on a list of coordinates.
+        Coordinates are passed as a dictionary, with the following structure:
+        :param conf: a dictionary-like object with the following structure:
+            coords = {
+                'sitecode1':
+                    {
+                        'start' : %Y-%m-%d,
+                        'end' : %Y-%m-%d,
+                        'freq' : %s,
+                        'lat' : %.2f,
+                        'lon' : %.2f,
+                        'alt' : %.2f,
+                        'height' : %.2f,
+                        'code' : %s,
+                        'range' : from %H:%M to %H:%M,
+                    },
+                'sitecode2': {...},
+                ...
+            }
+
+            The "code" and "range" attributes are optional. If "code" is not provided, the sitekey ("sitecode1",
+            "sitecode2", ..., in the example above) is used instead.
+            "start" and "end" should be in any format supported by pandas.Timestamp, and "freq" can be in a format
+            supported by pandas.tseries.frequencies.to_offset
+        """
+
+        obs = []
+        for site in conf.keys():
+            df = DataFrame(columns=['time', 'lat', 'lon', 'alt', 'height', 'code'])
+            start = conf[site]['start']
+            end = conf[site]['end']
+            freq = conf[site]['freq']
+            df.loc[:, 'time'] = date_range(start, end, freq=freq)
+            df.loc[:, 'lat'] = conf[site]['lat']
+            df.loc[:, 'lon'] = conf[site]['lon']
+            df.loc[:, 'alt'] = conf[site]['alt']
+            df.loc[:, 'height'] = conf[site]['height']
+            df.loc[:, 'code'] = conf[site].get('code', site)
+            interval = conf[site].get('range', None)
+            if interval is not None:
+                _, tmin, _, tmax = interval.split()
+                df = df.set_index('time').between_time(tmin, tmax).reset_index()
+            obs.append(df)
+        return cls(concat(obs, ignore_index=True))
+
 
     @classmethod
     def read(cls, fname: str) -> "Observations":
