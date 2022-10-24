@@ -9,7 +9,7 @@ from loguru import logger
 from dataclasses import dataclass, field
 from numpy.typing import NDArray
 from types import SimpleNamespace
-from numpy import nonzero, meshgrid, array, int16
+from numpy import nonzero, meshgrid, array, int16, array_equal
 import runflex
 from runflex.utilities import checkpath
 from git import Repo
@@ -69,19 +69,31 @@ class LumiaFile(File):
                 time.sleep(wait)
                 count += 1
                 wait += count
-                self.__init__(*args, count=count, wait=wait, **kwargs)
+                self.__init__(*args, origin=origin, count=count, wait=wait, **kwargs)
             else :
                 logger.error(f"Couldn't open file {args[0]} (File busy?)")
                 raise e
 
         # Application attributes
         self.origin = origin
-        self.attrs['origin'] = self.origin
+        self.attrs['origin'] = str(self.origin)
 
     def add(self, release: Release) -> None:
         # Make sure that all data is on the same time coordinates
         # (only for non empty footprints)
         release.shift_origin(self.origin)
+
+        # Store/check lat and lon:
+        if 'latitudes' in self:
+            assert array_equal(self['latitudes'][:], release.coordinates.lat)
+            assert array_equal(self['longitudes'][:], release.coordinates.lon)
+        else :
+            self['latitudes'] = release.coordinates.lat
+            self['latitudes'].attrs['units'] = 'degrees North'
+            self['latitudes'].attrs['info'] = 'center of the grid cells'
+            self['longitudes'] = release.coordinates.lon
+            self['longitudes'].attrs['units'] = 'degrees East'
+            self['longitudes'].attrs['info'] = 'center of the grid cells'
 
         # Store attributes:
         for k, v in release.run_attributes.items():

@@ -172,7 +172,7 @@ class Observations(DataFrame):
         return filenames
 
     def gen_obsid(self) -> typing.NDArray :
-        obsid = self.code + '.' + self.height.astype(int).astype(str) + 'm.' + self.time.dt.strftime('%Y%m%d-%H%M')
+        obsid = self.code + '.' + self.height.astype(int).astype(str) + 'm.' + self.time.dt.strftime('%Y%m%d-%H%M%S')
         return obsid.values
 
     def split(self, nobsmax: int = None, ncpus: int = 1, maxdt: Union[str, Timedelta] = '7D') -> List[Releases]:
