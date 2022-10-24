@@ -50,7 +50,7 @@ class Release:
         Use the beginning of the month as convention for the origin, by default (even if that leads to negative indices)
         """
         # Determine the number of time intervals there is between the two origins
-        nshift = (self.origin - new_origin) / self.dt
+        nshift = (self.origin - new_origin) / abs(self.dt)
         assert nshift-int(nshift) == 0
         self.nshift = int(nshift)
         self.coordinates.time += new_origin - self.origin
@@ -111,14 +111,10 @@ class LumiaFile(File):
         # If a release with the same name is present, delete it
         obsid = release.release_attributes['name']
         if obsid in self :
-            msg = f'{self[obsid].attrs.get("History","")}; Modified on {datetime.today():%Y-%m-%d %H:%M)}'
             del self[obsid]
-        else :
-            msg = f'Created on {datetime.today():%Y-%m-%d %H:%M}'
 
         # Store the release:
         gr = self.create_group(obsid)
-        gr.attrs['File_history'] = msg
         gr['ilons'] = release.footprint.ilon.astype(int16)
         gr['ilats'] = release.footprint.ilat.astype(int16)
         gr['itims'] = release.footprint.itime.astype(int16)
