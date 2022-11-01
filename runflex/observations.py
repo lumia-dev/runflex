@@ -76,18 +76,20 @@ class Observations(DataFrame):
         """
 
         obs = []
-        for site in conf.keys():
+        default_key = '\*'
+        defaults = conf.get(default_key, {})
+        for site in [_ for _ in conf.keys() if _ != default_key]:
             df = DataFrame(columns=['time', 'lat', 'lon', 'alt', 'height', 'code'])
-            start = conf[site].get('start', conf['start'])
-            end = conf[site].get('end', conf['end'])
-            freq = conf[site].get('freq', conf['freq'])
+            start = conf[site].get('start', defaults.start)
+            end = conf[site].get('end', defaults.end)
+            freq = conf[site].get('freq', defaults.freq)
             df.loc[:, 'time'] = date_range(start, end, freq=freq)
             df.loc[:, 'lat'] = conf[site]['lat']
             df.loc[:, 'lon'] = conf[site]['lon']
             df.loc[:, 'alt'] = conf[site]['alt']
             df.loc[:, 'height'] = conf[site]['height']
             df.loc[:, 'code'] = conf[site].get('code', site)
-            interval = conf[site].get('range', conf.get('range', None))
+            interval = conf[site].get('range', defaults.get('range', None))
             if interval is not None:
                 _, tmin, _, tmax = interval.split()
                 df = df.set_index('time').between_time(tmin, tmax).reset_index()
