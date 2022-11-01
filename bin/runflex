@@ -151,10 +151,9 @@ def calc_footprints(conf : DictConfig) -> Union[Observations, QueueManager]:
     contd = conf.get('continue', True)
     outpth = conf.paths.output
 
-    # Cleanup can remove anything that is in paths.run or paths.output, so disabled by default
+    # Cleanup can remove anything that is in paths.run, so disabled by default
     if conf.run.get('cleanup', False) :
         shutil.rmtree(conf.paths.run, ignore_errors=True)
-        shutil.rmtree(outpth, ignore_errors=True)
 
     # If it's a continuation (default True), check which footprints already exist:
     if contd:

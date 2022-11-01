@@ -62,21 +62,32 @@ class Observations(DataFrame):
             "sitecode2", ..., in the example above) is used instead.
             "start" and "end" should be in any format supported by pandas.Timestamp, and "freq" can be in a format
             supported by pandas.tseries.frequencies.to_offset
+
+            The keys 'start', 'end', 'freq' and 'range' can also be set at a global level (as a default):
+            coords = {
+                start : '%Y-%m-%d,
+                end : '%Y-%m-%d,
+                freq : %s,
+                range : from %H:%m to %H:%M
+                site1 : dict(lat= ..., lon = ..., alt = ..., height = ...),
+                site2 : dict(lat= ..., lon = ..., alt = ..., height = ..., start = ..., end = ...),
+                site3 : dict(lat= ..., lon = ..., alt = ..., height = ..., range = ...)
+            }
         """
 
         obs = []
         for site in conf.keys():
             df = DataFrame(columns=['time', 'lat', 'lon', 'alt', 'height', 'code'])
-            start = conf[site]['start']
-            end = conf[site]['end']
-            freq = conf[site]['freq']
+            start = conf[site].get('start', conf['start'])
+            end = conf[site].get('end', conf['end'])
+            freq = conf[site].get('freq', conf['freq'])
             df.loc[:, 'time'] = date_range(start, end, freq=freq)
             df.loc[:, 'lat'] = conf[site]['lat']
             df.loc[:, 'lon'] = conf[site]['lon']
             df.loc[:, 'alt'] = conf[site]['alt']
             df.loc[:, 'height'] = conf[site]['height']
             df.loc[:, 'code'] = conf[site].get('code', site)
-            interval = conf[site].get('range', None)
+            interval = conf[site].get('range', conf.get('range', None))
             if interval is not None:
                 _, tmin, _, tmax = interval.split()
                 df = df.set_index('time').between_time(tmin, tmax).reset_index()
