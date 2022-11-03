@@ -22,7 +22,6 @@ From: ubuntu:22.04
 
 	cd /runflex
 	make clean
-	make build
 	make install
 	rm -Rf /runflex/*
 

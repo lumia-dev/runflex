@@ -1,38 +1,11 @@
-Bootstrap: docker
-From: ubuntu:22.04
+Bootstrap: localimage
+From: runflexenv.simg
 
 %post
-
-	apt-get -y update
-	apt-get -y upgrade
-
-	apt install -y python3.10 git vim htop rsync rclone gfortran makedepf90 wget make python-is-python3 python3-pip
-	apt install -y libeccodes0 libeccodes-dev
-	apt install -y libnetcdff-dev
-
-	apt-get -y clean
-	apt-get -y autoremove
-
-	mkdir /meteo
-	mkdir /output
-	mkdir /scratch
-
-	# The following is needed by postprocessing.py. Some issue with permissions of git within the container ...
-	git config --system --replace-all safe.directory '/runflex'
-
-	cd /runflex
-	make clean
-	make build
-	make install
-	rm -f *.sif
+    cd /runflex
+    make clean
+    make build
+    make install
 
 %files
 	. /runflex
-
-%runscript
-	if [ $# -ne 0 ]
-	then
-		runflex $@
-	else
-		bash
-	fi
