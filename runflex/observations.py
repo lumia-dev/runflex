@@ -122,7 +122,13 @@ class Observations(DataFrame):
         if 'code' not in df:
             df.loc[:, 'code'] = df.loc[:, 'site']
 
-        return Observations(df.loc[:, ['time', 'lat', 'lon', 'alt', 'height', 'code', 'kindz', 'obsid']].drop_duplicates())
+        fields = ['time', 'lat', 'lon', 'alt', 'height', 'code']
+        if 'kindz' in df.columns :
+            fields.append('kindz')
+        if 'obsid' in df.columns :
+            fields.append('obsid')
+
+        return Observations(df.loc[:, fields].drop_duplicates())
 
     def select(self, time_range = ('1900', '2100'), lon_range = (-360, 360), lat_range = (-90, 90), include: List[str] = None, exclude: List[str] = None) -> "Observations":
         """
