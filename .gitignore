@@ -8,5 +8,6 @@ runflex/runflex
 .idea/
 /singularity/*.sif
 *.sif
+*.simg
 /runflex.egg-info
 /build/flexpart/*

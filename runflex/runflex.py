@@ -80,14 +80,11 @@ def load_obs(conf: DictConfig) -> Observations:
     elif 'coordinates' in conf.observations:
         obs = Observations.from_coordinates(conf.observations.coordinates)
 
-    try :
-        obs = obs.select(time_range = (conf.observations.get('start', '1900'), conf.observations.get('end', '2100')),
-                     lat_range = conf.outgrid.y[:2],
-                     lon_range = conf.outgrid.x[:2],
-                     include = conf.observations.get('include', None),
-                     exclude = conf.observations.get('exclude', None))
-    except :
-        import pdb; pdb.set_trace()
+    obs = obs.select(time_range = (conf.observations.get('start', '1900'), conf.observations.get('end', '2100')),
+                 lat_range = conf.outgrid.y[:2],
+                 lon_range = conf.outgrid.x[:2],
+                 include = conf.observations.get('include', None),
+                 exclude = conf.observations.get('exclude', None))
 
     # Select only the first n observations (for debug ...)
     if conf.observations.get('nobs', None):
@@ -111,9 +108,9 @@ def load_obs(conf: DictConfig) -> Observations:
 
     # Setup release height:
     if 'release_heigh' not in obs :
-        obs.loc[obs.kindz == 1, 'release_height'] = obs.height
+        obs.loc[obs.kindz == 1, 'release_height'] = obs.height.loc[obs.kindz == 1]
         alt_corr = conf.releases.get('altitude_correction', 1)
-        obs.loc[obs.kindz == 2, 'release_height'] = obs.height + alt_corr * (obs.alt - obs.height)
+        obs.loc[obs.kindz == 2, 'release_height'] = (obs.height + alt_corr * (obs.alt - obs.height)).loc[obs.kindz == 2]
 
     return obs
 
