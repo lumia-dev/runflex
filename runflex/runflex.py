@@ -37,10 +37,12 @@ def read_conf(**kwargs) -> DictConfig :
         conf.merge_with(OmegaConf.create())
 
     # keywords can be overwritten using "--setkey key: value" command
-    if kwargs.get('extras', None) :
-        for kv in kwargs['extras'] :
+    if kwargs.get('setkey', None) :
+        for kv in kwargs['setkey'] :
             k, v = kv.split(':')
-            conf[k] = v
+            for kk in k.split('.')[::-1]:
+                v = {kk.lower(): v}
+            conf.merge_with(v)
 
     # Most used rc-keys have shortcut arguments:
     # First, make sure no section is missing:

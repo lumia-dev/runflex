@@ -3,6 +3,7 @@ From: runflexenv.simg
 
 %post
     cd /runflex
+    rm *.simg *.sif
     make clean
     make build
     make install
