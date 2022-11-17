@@ -100,47 +100,47 @@ subroutine conccalc(itime,weight)
 
             if ( ind_samp .eq. -1 ) then
 
-                                            ix=int(xtra1(i))
-                                            jy=int(ytra1(i))
-                                            ixp=ix+1
-                                            jyp=jy+1
-                                            ddx=xtra1(i)-real(ix)
-                                            ddy=ytra1(i)-real(jy)
-                                            rddx=1.-ddx
-                                            rddy=1.-ddy
-                                            p1=rddx*rddy
-                                            p2=ddx*rddy
-                                            p3=rddx*ddy
-                                            p4=ddx*ddy
+                ix=int(xtra1(i))
+                jy=int(ytra1(i))
+                ixp=ix+1
+                jyp=jy+1
+                ddx=xtra1(i)-real(ix)
+                ddy=ytra1(i)-real(jy)
+                rddx=1.-ddx
+                rddy=1.-ddy
+                p1=rddx*rddy
+                p2=ddx*rddy
+                p3=rddx*ddy
+                p4=ddx*ddy
 
-                                            ! eso: Temporary fix for particle exactly at north pole
-                                            if (jyp >= nymax) then
-                                            !  write(*,*) 'WARNING: conccalc.f90 jyp >= nymax'
-                                            jyp=jyp-1
-                                            end if
+                ! eso: Temporary fix for particle exactly at north pole
+                if (jyp >= nymax) then
+                    !  write(*,*) 'WARNING: conccalc.f90 jyp >= nymax'
+                    jyp=jyp-1
+                end if
 
-                                            do il=2,nz
-                                            if (height(il).gt.ztra1(i)) then
-                                            indz=il-1
-                                            indzp=il
-                                            goto 6
-                                            endif
-                                            end do
-                                            6     continue
+                do il=2,nz
+                    if (height(il).gt.ztra1(i)) then
+                        indz=il-1
+                        indzp=il
+                        goto 6
+                    endif
+                end do
+                6     continue
 
-                                            dz1=ztra1(i)-height(indz)
-                                            dz2=height(indzp)-ztra1(i)
-                                            dz=1./(dz1+dz2)
+                dz1=ztra1(i)-height(indz)
+                dz2=height(indzp)-ztra1(i)
+                dz=1./(dz1+dz2)
 
-                                            ! Take density from 2nd wind field in memory (accurate enough, no time interpolation needed)
-                                            !*****************************************************************************
-                                            do ind=indz,indzp
-                                            rhoprof(ind-indz+1)=p1*rho(ix ,jy ,ind,memind(2)) &
-                                            +p2*rho(ixp,jy ,ind,2) &
-                                            +p3*rho(ix ,jyp,ind,2) &
-                                            +p4*rho(ixp,jyp,ind,2)
-                                            end do
-                                            rhoi=(dz1*rhoprof(2)+dz2*rhoprof(1))*dz
+                ! Take density from 2nd wind field in memory (accurate enough, no time interpolation needed)
+                !*****************************************************************************
+                do ind=indz,indzp
+                    rhoprof(ind-indz+1)=p1*rho(ix ,jy ,ind,memind(2)) &
+                            +p2*rho(ixp,jy ,ind,2) &
+                            +p3*rho(ix ,jyp,ind,2) &
+                            +p4*rho(ixp,jyp,ind,2)
+                end do
+                rhoi=(dz1*rhoprof(2)+dz2*rhoprof(1))*dz
             elseif (ind_samp.eq.0) then
                 rhoi = 1.
             endif
