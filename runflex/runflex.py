@@ -25,20 +25,20 @@ class LumiaFootprintFile(Dataset):
         return list(self.groups.keys())
 
 
-def read_conf(**kwargs) -> DictConfig :
+def read_conf(**kwargs) -> DictConfig:
     """
     Store the configuration of the run as a omegaconf object:
     """
     conf = OmegaConf.load(getfile('defaults.yaml'))
 
-    if kwargs.get('rc', None) :
+    if kwargs.get('rc', None):
         conf.merge_with(OmegaConf.load(kwargs['rc']))
-    else :
+    else:
         conf.merge_with(OmegaConf.create())
 
     # keywords can be overwritten using "--setkey key: value" command
-    if kwargs.get('setkey', None) :
-        for kv in kwargs['setkey'] :
+    if kwargs.get('setkey', None):
+        for kv in kwargs['setkey']:
             k, v = kv.split(':')
             for kk in k.split('.')[::-1]:
                 v = {kk.lower(): v}
@@ -47,7 +47,7 @@ def read_conf(**kwargs) -> DictConfig :
     # Most used rc-keys have shortcut arguments:
     # First, make sure no section is missing:
     for sect in ['observations', 'paths', 'run']:
-        if sect not in conf :
+        if sect not in conf:
             conf[sect] = {}
 
     # Mapping:
@@ -62,15 +62,15 @@ def read_conf(**kwargs) -> DictConfig :
     return conf
 
 
-def compile(conf: DictConfig) -> Flexpart :
+def compile(conf: DictConfig) -> Flexpart:
     """
     Compile flexpart.
     """
     flexpart = Flexpart(
-        build = conf.paths.build,
-        src = conf.paths.src,
-        makefile = conf.paths.makefile,
-        extras = conf.paths.get('extras', None)
+        build=conf.paths.build,
+        src=conf.paths.src,
+        makefile=conf.paths.get('makefile', None),
+        extras=conf.paths.get('extras', None)
     )
     flexpart.compile()
     return flexpart
@@ -82,34 +82,34 @@ def load_obs(conf: DictConfig) -> Observations:
     elif 'coordinates' in conf.observations:
         obs = Observations.from_coordinates(conf.observations.coordinates)
 
-    obs = obs.select(time_range = (conf.observations.get('start', '1900'), conf.observations.get('end', '2100')),
-                 lat_range = conf.outgrid.y[:2],
-                 lon_range = conf.outgrid.x[:2],
-                 include = conf.observations.get('include', None),
-                 exclude = conf.observations.get('exclude', None))
+    obs = obs.select(time_range=(conf.observations.get('start', '1900'), conf.observations.get('end', '2100')),
+                     lat_range=conf.outgrid.y[:2],
+                     lon_range=conf.outgrid.x[:2],
+                     include=conf.observations.get('include', None),
+                     exclude=conf.observations.get('exclude', None))
 
     # Select only the first n observations (for debug ...)
     if conf.observations.get('nobs', None):
         obs = obs.iloc[:conf.observations.nobs]
 
     # Setup kindz:
-    if 'kindz' not in obs :
+    if 'kindz' not in obs:
         kindz = conf.releases.kindz
         if isinstance(kindz, Union[int, float]):
             obs.loc[:, 'kindz'] = kindz
         elif isinstance(kindz, DictConfig):
-            if 'threshold' in kindz :
+            if 'threshold' in kindz:
                 obs.loc[:, 'kindz'] = 1
                 obs.loc[obs.alt >= kindz.threshold, 'kindz'] = 2
-            elif '1' in kindz :
+            elif '1' in kindz:
                 obs.loc[:, 'kindz'] = 2
                 obs.loc[obs.code.isin(kindz[1]), 'kindz'] = 1
-            elif '2' in kindz :
+            elif '2' in kindz:
                 obs.loc[:, 'kindz'] = 1
                 obs.loc[obs.code.isin(kindz[2]), 'kindz'] = 2
 
     # Setup release height:
-    if 'release_heigh' not in obs :
+    if 'release_heigh' not in obs:
         obs.loc[obs.kindz == 1, 'release_height'] = obs.height.loc[obs.kindz == 1]
         alt_corr = conf.releases.get('altitude_correction', 1)
         obs.loc[obs.kindz == 2, 'release_height'] = (obs.height + alt_corr * (obs.alt - obs.height)).loc[obs.kindz == 2]
@@ -117,17 +117,17 @@ def load_obs(conf: DictConfig) -> Observations:
     return obs
 
 
-def handle_missing(obs, path : Path, display : bool = False) -> List[bool]:
+def handle_missing(obs, path: Path, display: bool = False) -> List[bool]:
     missing = obs.check_footprints(path, LumiaFootprintFile)
     if any(missing):
         if display:
             print(obs.loc[missing].to_string())
-    else :
+    else:
         logger.info("All footprints have been computed")
     return missing
 
 
-def calc_footprints(conf : DictConfig) -> Union[Observations, QueueManager]:
+def calc_footprints(conf: DictConfig) -> Union[Observations, QueueManager]:
     # Load the observations:
     obs = load_obs(conf)
 
@@ -135,7 +135,7 @@ def calc_footprints(conf : DictConfig) -> Union[Observations, QueueManager]:
     outpth = conf.paths.output
 
     # Cleanup can remove anything that is in paths.run, so disabled by default
-    if conf.run.get('cleanup', False) :
+    if conf.run.get('cleanup', False):
         shutil.rmtree(conf.paths.run, ignore_errors=True)
 
     # If it's a continuation (default True), check which footprints already exist:

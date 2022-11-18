@@ -7,11 +7,15 @@ import sys
 from datetime import datetime
 from dataclasses import dataclass
 from loguru import logger
+
 try :
+    # If this file is imported by runflex as a module, this will work
     from runflex.utilities import checkpath, runcmd
 except ModuleNotFoundError:
+    # If it's called as a standalone script (using the if __name__ == '__main__', then this will work:
     from utilities import checkpath, runcmd
 from pathlib import Path
+import distro
 
 
 @dataclass
@@ -21,12 +25,15 @@ class Flexpart:
     makefile : Path = None
     extras : Path = None
 
+    def __post_init__(self):
+        if self.makefile is None :
+            self.makefile = f'makefile.{distro.id()}.gfortran'
+
     def setup(self, dest: Path) -> None:
         shutil.copy(os.path.join(self.build, 'flexpart.x'), dest)
 
     def compile(self, dest : Path = None) -> None:
 
-        assert self.makefile is not None, logger.error("Can't compile without a makefile!")
         assert self.src is not None, logger.error("Can't compile without a source code!")
 
         t0 = datetime.now()

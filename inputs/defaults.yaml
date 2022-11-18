@@ -2,7 +2,6 @@ paths :
   src : ${prefix:src/flexpart10.4}
   extras : ${prefix:src/extras}
   build : ${prefix:build/flexpart}
-  makefile : makefile.fedora.gfortran
   command : ${file:COMMAND}
   run : ${tmp:/var/tmp}
 
