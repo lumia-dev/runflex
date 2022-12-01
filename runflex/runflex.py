@@ -39,7 +39,7 @@ def read_conf(**kwargs) -> DictConfig:
     # keywords can be overwritten using "--setkey key: value" command
     if kwargs.get('setkey', None):
         for kv in kwargs['setkey']:
-            k, v = kv.split(':')
+            k, v = kv.split(':', maxsplit=1)
             for kk in k.split('.')[::-1]:
                 v = {kk.lower(): v}
             conf.merge_with(v)
@@ -56,7 +56,7 @@ def read_conf(**kwargs) -> DictConfig:
     conf_override = dict()
     conf_override['observations'] = {k: kwargs[k] for k in ['obs', 'start', 'end', 'sites', 'nobs'] if k in kwargs}
     conf_override['paths'] = {k: kwargs[k] for k in ['build', 'makefile', 'extras', 'src'] if k in kwargs}
-    conf_override['run'] = {k: kwargs[k] for k in ['serial', 'ncpus'] if k in kwargs}
+    conf_override['run'] = {k: kwargs[k] for k in ['serial', 'ncpus', 'cleanup', 'recompute'] if k in kwargs}
     conf.merge_with(conf_override)
 
     return conf
@@ -130,16 +130,14 @@ def handle_missing(obs, path: Path, display: bool = False) -> List[bool]:
 def calc_footprints(conf: DictConfig) -> Union[Observations, QueueManager]:
     # Load the observations:
     obs = load_obs(conf)
-
-    contd = conf.get('continue', True)
     outpth = conf.paths.output
 
     # Cleanup can remove anything that is in paths.run, so disabled by default
-    if conf.run.get('cleanup', False):
+    if conf.run.cleanup:
         shutil.rmtree(conf.paths.run, ignore_errors=True)
 
     # If it's a continuation (default True), check which footprints already exist:
-    if contd:
+    if conf.run.recompute:
         missing = handle_missing(obs, outpth)
         obs = obs.loc[missing]
         if not any(missing):
@@ -186,4 +184,5 @@ p_footprints.add_argument('--nobs', default=None, help="Use this to limit the nu
 # FLEXPART run footprints options
 p_footprints.add_argument('--serial', '-i', action='store_true', default=False)
 p_footprints.add_argument('--ncpus', '-n', help='Number of parallell processes', default=None, type=int)
-p_footprints.add_argument('--cleanup', action='store_true', default=False, help="Ensure that the rundir is clear from previous runs (set to False by default as this will erase anything in the scratch dir, even if it doesn't belong to runflex!)")
+p_footprints.add_argument('--cleanup', action='store_true', help="Ensure that the rundir is clear from previous runs (set to False by default as this will erase anything in the scratch dir, even if it doesn't belong to runflex!)")
+p_footprints.add_argument('--recompute', action='store_false', help='Use --recompute to force runflex to recompute any already existing footprints')
