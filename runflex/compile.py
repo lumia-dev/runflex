@@ -22,12 +22,13 @@ import distro
 class Flexpart:
     build : Path
     src : Path = None
-    makefile : Path = None
+    makefile : str = None
     extras : Path = None
 
     def __post_init__(self):
         if self.makefile is None :
             self.makefile = f'makefile.{distro.id()}.gfortran'
+        self.build = Path(self.build)
 
     def setup(self, dest: Path) -> None:
         shutil.copy(os.path.join(self.build, 'flexpart.x'), dest)
@@ -44,6 +45,9 @@ class Flexpart:
         # Additional set of source files (typically, those that are specific to a machine or project, and not on the git repository)
         if self.extras is not None :
             runcmd(f'rsync -avh {self.extras}/ --include=*.f90 --include={self.makefile} --exclude=* {self.build}/')
+
+        # Ensure that the makedepf90 dependencies file is deleted:
+        (self.build / 'dependencies').unlink(missing_ok=True)
 
         # Make
         curdir = os.getcwd()

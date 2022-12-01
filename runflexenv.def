@@ -9,6 +9,7 @@ From: ubuntu:22.04
 	apt install -y python3.10 git vim htop rsync rclone gfortran makedepf90 wget make python-is-python3 python3-pip
 	apt install -y libeccodes0 libeccodes-dev
 	apt install -y libnetcdff-dev
+	apt install -y python3-virtualenvwrapper
 
 	apt-get -y clean
 	apt-get -y autoremove

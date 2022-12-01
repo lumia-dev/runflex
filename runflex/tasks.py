@@ -11,7 +11,6 @@ from runflex.compile import Flexpart
 from runflex.postprocess import postprocess_task
 import os
 import shutil
-import tempfile
 from loguru import logger
 from dataclasses import dataclass
 from typing import Union
@@ -30,7 +29,7 @@ class JobInfo:
     rcf: DictConfig
     releases: Releases
     jobid: int
-    status : str = None
+    status: str = None
 
     @property
     def dict(self) -> dict:
@@ -39,14 +38,14 @@ class JobInfo:
 
 @dataclass
 class Task:
-    releases : Releases
-    rcf : DictConfig
-    rundir : Union[Path, str]
-    jobid : int = None
-    start : Timestamp = None
-    end : Timestamp = None
-    interactive : bool = False
-    status : str = None
+    releases: Releases
+    rcf: DictConfig
+    rundir: Union[Path, str]
+    jobid: int = None
+    start: Timestamp = None
+    end: Timestamp = None
+    interactive: bool = False
+    status: str = None
 
     def __post_init__(self):
 
@@ -76,7 +75,7 @@ class Task:
         tmin = tmin - Timedelta(days=lenmax)
 
         command = Command.read(self.rcf.paths.command)
-        if 'command' in self.rcf :
+        if 'command' in self.rcf:
             command.update(self.rcf.command)
 
         dt = Timedelta(seconds=command.LOUTAVER)
@@ -84,11 +83,11 @@ class Task:
         if dt <= Timedelta(days=1):
             start = Timestamp(start.strftime('%Y%m%d'))
             end = Timestamp(end.strftime('%Y%m%d'))
-            while start + dt < tmin :
+            while start + dt < tmin:
                 start += dt
-            while end < tmax :
+            while end < tmax:
                 end += dt
-        else :
+        else:
             logger.error("LOUTAVER longer than 24 hours is not implemented in runflex (but it should be doable)")
             raise NotImplementedError
 
@@ -107,8 +106,8 @@ class Task:
 
         x0, x1, dx = self.rcf.outgrid.x
         y0, y1, dy = self.rcf.outgrid.y
-        nx = (x1-x0)/dx
-        ny = (y1-y0)/dy
+        nx = (x1 - x0) / dx
+        ny = (y1 - y0) / dy
 
         grid = Outgrid(
             OUTLAT0=y0, OUTLON0=x0,
@@ -127,25 +126,25 @@ class Task:
         if isinstance(species, int):
             self.rcf.species = [species]
             species = [species]
-        for spec in species :
+        for spec in species:
             shutil.copy(getfile(f'SPECIES_{spec:03.0f}'), os.path.join(self.rundir, 'SPECIES'))
 
     def setup_meteo(self) -> None:
-        with meteo_lock :
+        with meteo_lock:
             logfile = self.rcf.meteo.get('logfile', sys.stdout)
             if self.interactive:
                 logfile = sys.stdout
             meteo = Meteo(
-                path = self.rcf.paths.meteo,
-                archive = self.rcf.meteo.get('archive', None),
-                prefix = self.rcf.meteo.prefix,
-                tres = self.rcf.meteo.interv,
-                task_id = self.jobid,
-                logfile = logfile
+                path=self.rcf.paths.meteo,
+                archive=self.rcf.meteo.get('archive', None),
+                prefix=self.rcf.meteo.prefix,
+                tres=self.rcf.meteo.interv,
+                task_id=self.jobid,
+                logfile=logfile
             )
             meteo.check_unmigrate(self.start, self.end)
             meteo.write_AVAILABLE(os.path.join(self.rundir, 'AVAILABLE'))
-            if self.rcf.meteo.get('cleanup', False) :
+            if self.rcf.meteo.get('cleanup', False):
                 meteo.cleanup(threshold=self.rcf.meteo.cleanup.threshold, nfilesmin=self.rcf.meteo.cleanup.nfilesmin)
 
     def setup_pathnames(self) -> None:
@@ -192,10 +191,10 @@ class Task:
         # flexpart.x
         self.flexpart.setup(Path(self.rundir) / 'flexpart.x')
 
-    def run(self, retry : bool = True) -> "Task":
+    def run(self, retry: bool = True) -> "Task":
 
         # Do not run the task if a "flexpart.ok" file has been found in the output folder (avoid overwriting existing data).
-        if self.completed :
+        if self.completed:
             logger.info(f'Found okfile at {self.okfile}, returning ...')
             self.status = 'skipped'
             return self
@@ -204,23 +203,23 @@ class Task:
         self.setup()
 
         # Run FLEXPART
-        if not self.interactive :
+        if not self.interactive:
             log_id = logger.add(sys.stdout, colorize=True, enqueue=True)
-            with open(self.rcf.run.logfile, 'a') as fid :
+            with open(self.rcf.run.logfile, 'a') as fid:
                 self.status = self.runflexpart(fid)
-            match self.status :
+            match self.status:
                 case 'success':
                     logger.success(f'Task {self.jobid} completed ({self.rcf.run.logfile})')
                 case 'failed':
                     logger.error(f'Task {self.jobid} failed ({self.rcf.run.logfile})')
-                    if retry :
+                    if retry:
                         # Make another attempt, sometimes it's enough ...
                         self.run(retry=False)
             logger.remove(log_id)
-        else :
+        else:
             self.status = self.runflexpart(sys.stdout)
 
-        if self.rcf.postprocess.get('lumia', False) :
+        if self.rcf.postprocess.get('lumia', False):
             postprocess_task(self)
 
         return self

@@ -10,4 +10,4 @@ runflex/runflex
 *.sif
 *.simg
 /runflex.egg-info
-/build/flexpart/*
+/build*
