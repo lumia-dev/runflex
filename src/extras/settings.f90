@@ -1,6 +1,6 @@
 module settings
 
-    use go_rc, only : trcfile, init, done, readrc
+    use go_rc,           only : trcfile, init, done, readrc
 
     implicit none
 

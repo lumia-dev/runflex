@@ -673,8 +673,8 @@ module com_mod
 
     integer, allocatable, dimension(:) :: npoint, nclass, idt, itramem, itrasplit
 
-    real(kind=dp), allocatable, dimension(:) :: xtra1, ytra1
-    real, allocatable, dimension(:) :: ztra1 
+    real(kind=dp), allocatable, dimension(:), target :: xtra1, ytra1
+    real, allocatable, dimension(:), target :: ztra1
     real, allocatable, dimension(:,:) :: xmass1
     real, allocatable, dimension(:,:) :: xscav_frac1
 

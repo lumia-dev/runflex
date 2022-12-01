@@ -92,7 +92,7 @@ subroutine convmix(itime,metdata_format)
     ! if no particles are present return after initialization
     !********************************************************
 
-    if (numpart.le.0) return
+    if (numpart<=0) return
 
     ! Assign igrid and igridn, which are pseudo grid numbers indicating particles
     ! that are outside the part of the grid under consideration
@@ -119,18 +119,18 @@ subroutine convmix(itime,metdata_format)
             !**********************************************************
 
             ngrid=0
-            if (metdata_format.eq.GRIBFILE_CENTRE_ECMWF) then
+            if (metdata_format==GRIBFILE_CENTRE_ECMWF) then
                 do j=numbnests,1,-1
-                    if ( x.gt.xln(j)+eps .and. x.lt.xrn(j)-eps .and. &
-                        y.gt.yln(j)+eps .and. y.lt.yrn(j)-eps ) then
+                    if ( x>xln(j)+eps .and. x<xrn(j)-eps .and. &
+                        y>yln(j)+eps .and. y<yrn(j)-eps ) then
                         ngrid=j
                         goto 23
                     endif
                 end do
             else
                 do j=numbnests,1,-1
-                    if ( x.gt.xln(j) .and. x.lt.xrn(j) .and. &
-                        y.gt.yln(j) .and. y.lt.yrn(j) ) then
+                    if ( x>xln(j) .and. x<xrn(j) .and. &
+                        y>yln(j) .and. y<yrn(j) ) then
                         ngrid=j
                         goto 23
                     endif
@@ -141,14 +141,14 @@ subroutine convmix(itime,metdata_format)
             ! Determine nested grid coordinates
             !**********************************
 
-            if (ngrid.gt.0) then
+            if (ngrid>0) then
                 ! nested grids
                 xtn=(x-xln(ngrid))*xresoln(ngrid)
                 ytn=(y-yln(ngrid))*yresoln(ngrid)
                 ix=nint(xtn)
                 jy=nint(ytn)
                 igridn(ipart,ngrid) = 1 + jy*nxn(ngrid) + ix
-            else if(ngrid.eq.0) then
+            else if(ngrid==0) then
                 ! mother grid
                 ix=nint(x)
                 jy=nint(y)
@@ -181,13 +181,13 @@ subroutine convmix(itime,metdata_format)
     igrold = -1
     do kpart=1,numpart
         igr = igrid(kpart)
-        if (igr .ne. -1) then
+        if (igr /= -1) then
             ipart = ipoint(kpart)
 
             pp => particles(ipart)
 
             ! sumall = sumall + 1
-            if (igr .ne. igrold) then
+            if (igr /= igrold) then
                 ! we are in a new grid column
                 jy = (igr-1)/nx
                 ix = igr - jy*nx - 1
@@ -197,7 +197,7 @@ subroutine convmix(itime,metdata_format)
                 tt2conv=(tt2(ix,jy,1,mind1)*dt2+tt2(ix,jy,1,mind2)*dt1)*dtt
                 td2conv=(td2(ix,jy,1,mind1)*dt2+td2(ix,jy,1,mind2)*dt1)*dtt
                 !!$      do kz=1,nconvlev+1      !old
-                if (metdata_format.eq.GRIBFILE_CENTRE_ECMWF) then
+                if (metdata_format==GRIBFILE_CENTRE_ECMWF) then
                     do kz=1,nuvz-1           !bugfix
                         tconv(kz)=(tth(ix,jy,kz+1,mind1)*dt2+ &
                             tth(ix,jy,kz+1,mind2)*dt1)*dtt
@@ -232,14 +232,14 @@ subroutine convmix(itime,metdata_format)
                 ! Calculate the gross fluxes across layer interfaces
                 !***************************************************
 
-                if (iflux.eq.1) then
+                if (iflux==1) then
                     itage = abs(pp%t - itramem(ipart))
                     do nage=1,nageclass
-                        if (itage.lt.lage(nage)) goto 37
+                        if (itage<lage(nage)) goto 37
                     end do
                     37     continue
 
-                    if (nage.le.nageclass) &
+                    if (nage<=nageclass) &
                         call calcfluxes(nage,ipart,real(xtra1(ipart)), &
                         real(ytra1(ipart)),ztold)
                 endif
@@ -269,13 +269,13 @@ subroutine convmix(itime,metdata_format)
         igrold = -1
         do kpart=1,numpart
             igr = igrid(kpart)
-            if (igr .ne. -1) then
+            if (igr /= -1) then
                 ipart = ipoint(kpart)
 
                 pp => particles(ipart)
 
                 ! sumall = sumall + 1
-                if (igr .ne. igrold) then
+                if (igr /= igrold) then
                     ! we are in a new grid column
                     jy = (igr-1)/nxn(inest)
                     ix = igr - jy*nxn(inest) - 1
@@ -312,14 +312,14 @@ subroutine convmix(itime,metdata_format)
                     ! Calculate the gross fluxes across layer interfaces
                     !***************************************************
 
-                    if (iflux.eq.1) then
+                    if (iflux==1) then
                         itage = abs(pp%t - itramem(ipart))
                         do nage=1,nageclass
-                            if (itage.lt.lage(nage)) goto 47
+                            if (itage<lage(nage)) goto 47
                         end do
                         47       continue
 
-                        if (nage.le.nageclass) &
+                        if (nage<=nageclass) &
                             call calcfluxes(nage,ipart,real(xtra1(ipart)), &
                             real(ytra1(ipart)),ztold)
                     endif

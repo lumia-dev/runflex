@@ -119,6 +119,7 @@ subroutine timemanager(metdata_format)
     real :: grfraction(3)
     real, parameter :: e_inv = 1.0 / exp(1.0)
 
+
     ! First output for time 0
     !************************
 
@@ -139,6 +140,7 @@ subroutine timemanager(metdata_format)
 
     do itime = 0, ideltas, lsynctime
 
+
         ! Computation of wet deposition, OH reaction and mass transfer
         ! between two species every lsynctime seconds
         ! maybe wet depo frequency can be relaxed later but better be on safe side
@@ -157,16 +159,17 @@ subroutine timemanager(metdata_format)
 
         ! compute convection for backward runs
         !*************************************
-	if ((ldirect == -1) .and. (lconvection == 1) .and. (itime < 0)) then
+	    if ((ldirect == -1) .and. (lconvection == 1) .and. (itime < 0)) then
             call convmix(itime, metdata_format)
         endif
+
 
         ! Get necessary wind fields if not available
         !*******************************************
         call getfields(itime, nstop1, metdata_format)
         if (nstop1 > 1) stop 'NO METEO FIELDS AVAILABLE'
 
-        ! Get hourly OH fields if not available 
+        ! Get hourly OH fields if not available
         !****************************************************
         if (OHREA) call gethourlyOH(itime)
 
@@ -199,8 +202,8 @@ subroutine timemanager(metdata_format)
                 do kp=1, maxpointspec_act
                     if (decay(ks) > 0) then
                         ! Mother output grid
-			wetgridunc(:, :, ks, kp, :, :) = wetgridunc(:, :, ks, kp, :, :) * exp(-outstep * decay(ks))
-			drygridunc(:, :, ks, kp, :, :) = drygridunc(:, :, ks, kp, :, :) * exp(-outstep * decay(ks))
+			            wetgridunc(:, :, ks, kp, :, :) = wetgridunc(:, :, ks, kp, :, :) * exp(-outstep * decay(ks))
+			            drygridunc(:, :, ks, kp, :, :) = drygridunc(:, :, ks, kp, :, :) * exp(-outstep * decay(ks))
                         if (nested_output == 1) then
                             wetgriduncn(:, :, ks, kp, :, :) = wetgriduncn(:, :, ks, kp, :, :) * exp(-outstep * decay(ks))
                             drygriduncn(:, :, ks, kp, :, :) = drygriduncn(:, :, ks, kp, :, :) * exp(-outstep * decay(ks))
@@ -209,7 +212,6 @@ subroutine timemanager(metdata_format)
                 end do
             end do
         endif
-
         ! Check whether concentrations are to be calculated
         !**************************************************
 
@@ -425,8 +427,8 @@ subroutine timemanager(metdata_format)
 
                     ! Integrate Lagevin equation for lsynctime seconds
                     !*************************************************
-                    call advance(itime, npoint(j), idt(j), uap(j), ucp(j), uzp(j), us(j), vs(j), ws(j), nstop, xtra1(j), ytra1(j), ztra1(j), prob, cbt(j))
 
+                    call advance(itime, npoint(j), idt(j), uap(j), ucp(j), uzp(j), us(j), vs(j), ws(j), nstop, xtra1(j), ytra1(j), ztra1(j), prob, cbt(j), j)
                     ! Calculate average position for particle dump output
                     !****************************************************
 
@@ -491,17 +493,19 @@ subroutine timemanager(metdata_format)
                             if (nested_output == 1) call drydepokernel_nest(nclass(j), drydeposit, real(xtra1(j)), real(ytra1(j)), nage, kp)
                         endif
 
-                    ! Terminate trajectories that are older than maximum allowed age
-                    !***************************************************************
+                        ! Terminate trajectories that are older than maximum allowed age
+                        !***************************************************************
 
-                    if (pp%t - itramem(j) >= lage(nageclass)) then
-                        if (linit_cond >= 1) call initial_cond_calc(itime + lsynctime, j)
+                        if (pp%t - itramem(j) >= lage(nageclass)) then
+                            if (linit_cond >= 1) call initial_cond_calc(itime + lsynctime, j)
                             pp%active = .false.
                         endif
                     endif
                 endif
                 nullify(pp)
             end do !loop over particles
+
+
 
             ! Counter of "unstable" particle velocity during a time scale of
             ! maximumtl=20 minutes (defined in com_mod)
@@ -515,10 +519,10 @@ subroutine timemanager(metdata_format)
             end do
             ! Output to keep track of the numerical instabilities in CBL simulation and if
             ! they are compromising the final result (or not)
-            if (cblflag == 1) print *, j, itime, 'nan_synctime', nan_count, 'nan_tl', total_nan_intl
         end if
 
         call update_variables(itime)
+
     end do
 
     call output_particles_final_position

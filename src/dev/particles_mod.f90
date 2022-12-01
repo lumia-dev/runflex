@@ -15,7 +15,8 @@ module particles_mod
         ! pointers (temporary ...)
         ! real, pointer             :: height
         ! real(kind=dp), pointer    :: x, y!, z
-        real    :: x, y, z
+        real(kind=dp)    :: x, y
+        real             :: z
         integer          :: release_time
 
         ! used for output only :
@@ -57,10 +58,6 @@ module particles_mod
         particles%free = .true.
         particles%active = .false.
 
-        ! particles%height => ztra1
-        ! particles%x => xtra1
-        ! particles%y => ytra1
-
     end subroutine init_particles
 
 
@@ -69,7 +66,9 @@ module particles_mod
         class(type_particles) :: self
         integer, intent(in)   :: itime
 
-        if (itime == self%t) then
+        ! Check on the time and not on the "active" status (this way, particles that just got deactivated
+        ! in this time step will be accounted for
+        if ((itime == self%t)) then
             self%oro = self%interp_lon_lat(oro)
             self%potential_vorticity = self%interp_lon_lat_alt_time(pv, itime)
             self%specific_humidity = self%interp_lon_lat_alt_time(qv, itime)
@@ -87,16 +86,18 @@ module particles_mod
 
         integer, intent(in) :: itime
 
-        ! The following should be modified directly by FLEXPART, ideally ...
-        particles%lon = xlon0 + xtra1 * dx
-        particles%lat = ylat0 + ytra1 * dy
-        particles%x = xtra1
-        particles%y = ytra1
-        particles%z = ztra1
-
         ! The following fields need to be calculated, when the particle is synchronized with the model
         do ipart = 1, numpart
-            call particles(ipart)%update(itime)
+            pp => particles(ipart)
+            if (.not. pp%free) then
+                pp%lon = xlon0 + xtra1(ipart) * dx
+                pp%lat = ylat0 + ytra1(ipart) * dy
+                pp%x = xtra1(ipart)
+                pp%y = ytra1(ipart)
+                pp%z = ztra1(ipart)
+                call pp%update(itime)
+            end if
+            nullify(pp)
         end do
 
     end subroutine update_variables
