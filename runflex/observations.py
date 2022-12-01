@@ -10,7 +10,7 @@ from runflex.releases import Releases
 
 
 class FootprintClass(Protocol):
-    footprints : List[str]
+    footprints: List[str]
 
     def __init__(self, filename: str, mode: str) -> None:
         ...
@@ -97,8 +97,9 @@ class Observations(DataFrame):
                 _, tmin, _, tmax = interval.split()
                 df = df.set_index('time').between_time(tmin, tmax).reset_index()
             obs.append(df)
-        return cls(concat(obs, ignore_index=True))
-
+        obs = cls(concat(obs, ignore_index=True))
+        obs.loc[:, 'obsid'] = obs.gen_obsid()
+        return obs
 
     @classmethod
     def read(cls, fname: str) -> "Observations":
@@ -115,7 +116,7 @@ class Observations(DataFrame):
             df = read_csv(fname)
         elif fname.endswith('hdf') or fname.endswith('h5'):
             df = read_hdf(fname)
-        else :
+        else:
             logger.error(f"Unrecognized observation format for observation file {fname}")
             raise RuntimeError
 
@@ -123,14 +124,17 @@ class Observations(DataFrame):
             df.loc[:, 'code'] = df.loc[:, 'site']
 
         fields = ['time', 'lat', 'lon', 'alt', 'height', 'code']
-        if 'kindz' in df.columns :
+        if 'kindz' in df.columns:
             fields.append('kindz')
-        if 'obsid' in df.columns :
+        if 'obsid' in df.columns:
             fields.append('obsid')
 
-        return Observations(df.loc[:, fields].drop_duplicates())
+        obs = cls(df.loc[:, fields].drop_duplicates())
+        if 'obsid' not in obs.columns:
+            obs.loc[:, 'obsid'] = obs.gen_obsid()
+        return obs
 
-    def select(self, time_range = ('1900', '2100'), lon_range = (-360, 360), lat_range = (-90, 90), include: List[str] = None, exclude: List[str] = None) -> "Observations":
+    def select(self, time_range=('1900', '2100'), lon_range=(-360, 360), lat_range=(-90, 90), include: List[str] = None, exclude: List[str] = None) -> "Observations":
         """
         Filter out data that are outside the requested lat/lon/time intervals. The default values allows any (reasonable) coordinates.
         Arguments:
@@ -144,17 +148,17 @@ class Observations(DataFrame):
             a new "Observations" DataFrame (no "inplace" option).
         """
         db = self.loc[
-               (self.time >= time_range[0]) &
-               (self.time <= time_range[1]) &
-               (self.lon >= lon_range[0]) &
-               (self.lat >= lat_range[0]) &
-               (self.lon <= lon_range[1]) &
-               (self.lat <= lat_range[1]), :].copy()
+             (self.time >= time_range[0]) &
+             (self.time <= time_range[1]) &
+             (self.lon >= lon_range[0]) &
+             (self.lat >= lat_range[0]) &
+             (self.lon <= lon_range[1]) &
+             (self.lat <= lat_range[1]), :].copy()
 
-        if include :
+        if include:
             db = db.loc[db.code.isin(include), :]
 
-        if exclude :
+        if exclude:
             db = db.loc[~db.code.isin(exclude), :]
 
         return db
@@ -164,17 +168,17 @@ class Observations(DataFrame):
         Check if footprints are already present in the output directory. Returns a bool array with "True" marking the missing footprints
         """
         filenames = self.filenames.values if 'filenames' in self else self.gen_filenames(path)
-        if 'obsid' not in self :
+        if 'obsid' not in self:
             self.loc[:, 'obsid'] = self.gen_obsid()
 
         # Check in each file:
         self.loc[:, 'present'] = False
         for filename in tqdm(unique(filenames), desc=f'Checking the presence of footprints in {path}'):
             dfs = self.loc[filenames == filename]
-            try :
-                with footprint(filename, 'r') as fp :
+            try:
+                with footprint(filename, 'r') as fp:
                     self.loc[filenames == filename, 'present'] = [o in fp.footprints for o in dfs.obsid]
-            except FileNotFoundError :
+            except FileNotFoundError:
                 logger.warning(f"File {filename} not found.")
 
         missing = (~self.present).tolist()
@@ -183,17 +187,17 @@ class Observations(DataFrame):
         # Message summary of footprints presence:
         if self.loc[missing, :].empty:
             logger.info(f"All footprints have already been computed")
-        else :
+        else:
             logger.info(f"{sum(missing)} footprints remain to be computed (out of a total of {len(missing)}")
 
         return missing
 
-    def gen_filenames(self, path: str = './') -> typing.NDArray :
+    def gen_filenames(self, path: str = './') -> typing.NDArray:
         filenames = self.code + '.' + self.height.astype(int).astype(str) + 'm.' + self.time.dt.strftime('%Y-%m.hdf')
         filenames = array([os.path.join(path, fn) for fn in filenames])
         return filenames
 
-    def gen_obsid(self) -> typing.NDArray :
+    def gen_obsid(self) -> typing.NDArray:
         obsid = self.code + '.' + self.height.astype(int).astype(str) + 'm.' + self.time.dt.strftime('%Y%m%d-%H%M%S')
         return obsid.values
 
@@ -207,7 +211,7 @@ class Observations(DataFrame):
         ntasks = ceil(nobs / nobsmax)
 
         # If there are more CPUs than tasks, then reduce the number of obs/task (making sure that there's at least one obs/task)
-        if ntasks < ncpus :
+        if ntasks < ncpus:
             ntasks = ncpus
             nobsmax = int(ceil(nobs / ntasks))
 
@@ -217,9 +221,8 @@ class Observations(DataFrame):
 
         releases = []
         i0 = 0
-        with tqdm(total=self.shape[0], desc='splitting observation database') as pbar :
+        with tqdm(total=self.shape[0], desc='splitting observation database') as pbar:
             while i0 < self.shape[0]:
-
                 db = self.iloc[i0: i0 + nobsmax]
                 db = db.loc[db.time - db.time.min() <= maxdt, :]
 
