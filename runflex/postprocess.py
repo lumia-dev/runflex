@@ -1,13 +1,13 @@
 #!/usr/bin/env python
-from netCDF4 import Dataset, chartostring
+from netCDF4 import Dataset, chartostring, Group
 from h5py import File
 from pandas import DataFrame, Timestamp, Timedelta
-from datetime import datetime
 import time
 import os
 from loguru import logger
 from dataclasses import dataclass, field
 from numpy.typing import NDArray
+from typing import Union
 from types import SimpleNamespace
 from numpy import nonzero, meshgrid, array, int16, array_equal
 import runflex
@@ -17,25 +17,25 @@ from git import Repo
 
 @dataclass
 class Release:
-    data : NDArray
-    origin : Timestamp
-    dt : Timedelta
-    release_attributes : dict = field(default_factory=dict)
-    run_attributes : dict = field(default_factory=dict)
-    coordinates : SimpleNamespace = SimpleNamespace(lon=None, lat=None, time=None)
-    grid : SimpleNamespace = SimpleNamespace(lon=None, lat=None, time=None)
-    specie : dict = field(default_factory=dict)
-    nshift : int = 0
+    data: NDArray
+    origin: Timestamp
+    dt: Timedelta
+    release_attributes: dict = field(default_factory=dict)
+    run_attributes: dict = field(default_factory=dict)
+    coordinates: SimpleNamespace = SimpleNamespace(lon=None, lat=None, time=None)
+    grid: SimpleNamespace = SimpleNamespace(lon=None, lat=None, time=None)
+    specie: dict = field(default_factory=dict)
+    nshift: int = 0
 
     @property
     def footprint(self) -> SimpleNamespace:
         data = self.data.reshape(-1)
         sel = nonzero(data)
         return SimpleNamespace(
-            sensi = data[sel],
-            ilat = self.grid.lat[sel],
-            ilon = self.grid.lon[sel],
-            itime = self.grid.time[sel] + self.nshift
+            sensi=data[sel],
+            ilat=self.grid.lat[sel],
+            ilon=self.grid.lon[sel],
+            itime=self.grid.time[sel] + self.nshift
         )
 
     def __post_init__(self):
@@ -51,26 +51,26 @@ class Release:
         """
         # Determine the number of time intervals there is between the two origins
         nshift = (self.origin - new_origin) / abs(self.dt)
-        assert nshift-int(nshift) == 0
+        assert nshift - int(nshift) == 0
         self.nshift = int(nshift)
         self.coordinates.time += new_origin - self.origin
         self.origin = new_origin
 
 
 class LumiaFile(File):
-    def __init__(self, *args, origin : Timestamp, count : int = 0, wait : int = 1, **kwargs):
+    def __init__(self, *args, origin: Timestamp, count: int = 0, wait: int = 1, **kwargs):
         # Open the file, but wait for it to be free if it's busy
         maxcount = 20
-        try :
+        try:
             super().__init__(*args, **kwargs)
         except (OSError, BlockingIOError) as e:
-            if count < maxcount :
+            if count < maxcount:
                 logger.info(f"Waiting {wait} sec for the access to file {args[0]}")
                 time.sleep(wait)
                 count += 1
                 wait += count
                 self.__init__(*args, origin=origin, count=count, wait=wait, **kwargs)
-            else :
+            else:
                 logger.error(f"Couldn't open file {args[0]} (File busy?)")
                 raise e
 
@@ -78,7 +78,7 @@ class LumiaFile(File):
         self.origin = origin
         self.attrs['origin'] = str(self.origin)
 
-    def add(self, release: Release) -> None:
+    def add(self, release: Release, background: Union[None, Group]) -> None:
         # Make sure that all data is on the same time coordinates
         # (only for non empty footprints)
         release.shift_origin(self.origin)
@@ -87,7 +87,7 @@ class LumiaFile(File):
         if 'latitudes' in self:
             assert array_equal(self['latitudes'][:], release.coordinates.lat)
             assert array_equal(self['longitudes'][:], release.coordinates.lon)
-        else :
+        else:
             self['latitudes'] = release.coordinates.lat
             self['latitudes'].attrs['units'] = 'degrees North'
             self['latitudes'].attrs['info'] = 'center of the grid cells'
@@ -98,9 +98,9 @@ class LumiaFile(File):
         # Store attributes:
         for k, v in release.run_attributes.items():
             k = f'run_{k}'
-            if k not in self.attrs :
+            if k not in self.attrs:
                 self.attrs[k] = v
-            elif v != self.attrs[k] :
+            elif v != self.attrs[k]:
                 release.release_attributes[k] = v
 
         # FLEXPART "species"
@@ -110,7 +110,7 @@ class LumiaFile(File):
         # Write the release:
         # If a release with the same name is present, delete it
         obsid = release.release_attributes['name']
-        if obsid in self :
+        if obsid in self:
             del self[obsid]
 
         # Store the release:
@@ -130,6 +130,15 @@ class LumiaFile(File):
 
         logger.info(f"Added release {obsid} to file {self.filename}")
 
+        # Add background, if needed
+        if background is not None :
+            gr.create_group('background')
+            for k, v in background.variables.items():
+                gr['background'][k] = v[:]
+                # Copy netcdf attributes:
+                for attr in background[k].ncattrs():
+                    gr['background'][k].attrs[attr] = getattr(background[k], attr)
+
 
 class GridTimeFile:
     def __init__(self, *args, **kwargs):
@@ -140,7 +149,7 @@ class GridTimeFile:
         self.coordinates = SimpleNamespace(
             lon=self['longitude'][:].data,
             lat=self['latitude'][:].data,
-            time=array([self.end + Timedelta(seconds=_) - self.dt/2 for _ in self['time'][:].data])
+            time=array([self.end + Timedelta(seconds=_) - self.dt / 2 for _ in self['time'][:].data])
         )
         self.species = vars(self['spec001_mr'])
         self.params = vars(self.ds)
@@ -167,10 +176,10 @@ class GridTimeFile:
         height = self['height'][:].data
         assert len(height == 1), logger.critical("This script is only adapted for single-layer footprints")
         self.grid = SimpleNamespace(
-            time = grid[0].reshape(-1),
-            lat = grid[1].reshape(-1),
-            lon = grid[2].reshape(-1),
-            height = height
+            time=grid[0].reshape(-1),
+            lat=grid[1].reshape(-1),
+            lon=grid[2].reshape(-1),
+            height=height
         )
 
     def __enter__(self):
@@ -183,14 +192,14 @@ class GridTimeFile:
     def get(self, release_name: str) -> Release:
         irl = list(self.releases.name).index(release_name)
         return Release(
-            data = self['spec001_mr'][0, irl, :, 0, :, :][::-1, :, :].data,
-            origin = self.start,
-            dt = self.dt,
+            data=self['spec001_mr'][0, irl, :, 0, :, :][::-1, :, :].data,
+            origin=self.start,
+            dt=self.dt,
             grid=self.grid,
-            release_attributes = self.releases.iloc[irl].to_dict(),
-            run_attributes= self.params,
-            coordinates= self.coordinates,
-            specie= self.species,
+            release_attributes=self.releases.iloc[irl].to_dict(),
+            run_attributes=self.params,
+            coordinates=self.coordinates,
+            specie=self.species,
         )
 
     def __getitem__(self, item):
@@ -206,12 +215,22 @@ def postprocess_task(task) -> None:
 
         # Open the FLEXPART grid_time file:
         with GridTimeFile(task.end.strftime(os.path.join(task.rundir, 'grid_time_%Y%m%d%H%M%S.nc')), 'r') as gridfile:
+
+            # Open also the background file, if it exists:
+            bgfile = task.rundir / 'particles_final.nc'
+            bg = {}
+            if bgfile.exists():
+                bg = Dataset(bgfile)
+
             # Iterate over the lumia footprint files (i.e. destination)
             for file in releases.drop_duplicates(subset=['filename']).loc[:, ['filename', 'time']].itertuples():
                 origin = Timestamp(file.time.strftime('%Y-%m'))
-                with LumiaFile(os.path.join(checkpath(task.rcf.paths.output), file.filename), origin=origin, mode='a') as lum :
+                with LumiaFile(os.path.join(checkpath(task.rcf.paths.output), file.filename), origin=origin, mode='a') as lum:
                     for release in releases.loc[releases.filename == file.filename].obsid:
-                        lum.add(gridfile.get(release))
+                        lum.add(gridfile.get(release), bg.groups.get(release, None))
+
+            if bgfile.exists():
+                bg.close()
 
 
 if __name__ == '__main__':
