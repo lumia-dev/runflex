@@ -29,6 +29,11 @@ class Flexpart:
         if self.makefile is None :
             self.makefile = f'makefile.{distro.id()}.gfortran'
         self.build = Path(self.build)
+        
+        logger.info(f"Compiling FLEXPART into {self.build} using source codes from:")
+        logger.info(f"  {self.src}")
+        logger.info(f"  {self.extras}")
+        logger.info(f"Using makefile {self.makefile}")
 
     def setup(self, dest: Path) -> None:
         shutil.copy(os.path.join(self.build, 'flexpart.x'), dest)

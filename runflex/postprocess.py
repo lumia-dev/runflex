@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 from netCDF4 import Dataset, chartostring, Group
 from h5py import File
-from pandas import DataFrame, Timestamp, Timedelta
+from pandas import DataFrame, Timestamp, Timedelta, TimedeltaIndex
 import time
 import os
 from loguru import logger
@@ -139,6 +139,11 @@ class LumiaFile(File):
                 for attr in background[k].ncattrs():
                     gr['background'][k].attrs[attr] = getattr(background[k], attr)
 
+            # Correct time origin: currently it refers to the *end* (most recent date) of the simulation,
+            # as opposed to what happened with the footprint:
+            gr['background']['time'][:] = gr['background']['time'][:] + (Timestamp(release.run_attributes['iedate'] + release.run_attributes['ietime']) - self.origin).total_seconds()
+            gr['background']['time'].attrs['units'] = f'seconds since {self.origin}'
+            gr['background']['time'].attrs['calendar'] = 'proleptic_gregorian'
 
 class GridTimeFile:
     def __init__(self, *args, **kwargs):
