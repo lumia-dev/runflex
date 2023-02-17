@@ -223,9 +223,10 @@ def postprocess_task(task) -> None:
 
             # Open also the background file, if it exists:
             bgfile = task.rundir / 'particles_final.nc'
-            bg = {}
             if bgfile.exists():
                 bg = Dataset(bgfile)
+            else :
+                bg = SimpleNamespace(groups={})
 
             # Iterate over the lumia footprint files (i.e. destination)
             for file in releases.drop_duplicates(subset=['filename']).loc[:, ['filename', 'time']].itertuples():

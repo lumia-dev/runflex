@@ -15,7 +15,7 @@ from loguru import logger
 from dataclasses import dataclass
 from typing import Union
 from pathlib import Path
-from runflex.files import Command, Outgrid
+from runflex.files import Command, Outgrid, Species
 from runflex.utilities import getfile
 from multiprocessing import RLock
 
@@ -122,12 +122,11 @@ class Task:
 
     def setup_species(self) -> None:
         checkpath(os.path.join(self.rundir, 'SPECIES'))
-        species = self.rcf.species
-        if isinstance(species, int):
-            self.rcf.species = [species]
-            species = [species]
-        for spec in species:
+        spec = self.rcf.releases.species
+        if isinstance(spec, int):
             shutil.copy(getfile(f'SPECIES_{spec:03.0f}'), os.path.join(self.rundir, 'SPECIES'))
+        elif isinstance(spec, DictConfig):
+            Species(**self.rcf.releases.species).write(self.rundir / 'SPECIES' / f'SPECIES_999', name='SPECIES_PARAMS', prefix='P')
 
     def setup_meteo(self) -> None:
         with meteo_lock:
@@ -155,7 +154,11 @@ class Task:
             fid.write(os.path.join(self.rundir.absolute(), 'AVAILABLE'))
 
     def setup_releases(self) -> None:
-        self.releases.species = self.rcf.species
+        spec = self.rcf.releases.species
+        if isinstance(spec, int):
+            self.releases.species = [spec]
+        else :
+            self.releases.species = ['999']
         self.releases.loc[:, 'mass'] = self.rcf.releases.mass
         self.releases.loc[:, 'npart'] = self.rcf.releases.npart
         self.releases.write(os.path.join(self.rundir, 'RELEASES'))

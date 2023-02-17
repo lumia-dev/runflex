@@ -35,17 +35,28 @@ class Namelist:
             if k.upper() in self.fields:
                 setattr(self, k.upper(), v)
 
-    def write(self, filename: str, name: str = None, mode: str = 'w') -> str:
+    def write(self, filename: str, name: str = None, mode: str = 'w', prefix : str = '') -> str:
+        """
+        Write fields to a namelist file.
+        :param filename: path to the namelist file
+        :param name: name of the namelist
+        :param mode: 'w' or 'a' (create a new file or append it)
+        :param prefix: prefix common to all keys (e.g. "P" in the "Species" dataframe)
+        :return:
+        """
         with open(filename, mode) as fid:
             fid.write(f'&{name}\n')
             for key in self.fields:
                 if isinstance(self[key], str):
+                    # Wrap strings in quotes
                     value = f'"{self[key]}"'
                 elif hasattr(self[key], '__iter__'):
+                    # if value is an iterable, then write it as a comma-separated list
                     value = ", ".join([str(_) for _ in self[key]])
                 else:
+                    # otherwise, just write the key
                     value = self[key]
-                fid.write(f' {key} = {value}\n')
+                fid.write(f' {prefix}{key} = {value}\n')
             fid.write(' /\n\n')
         return filename
 
@@ -193,3 +204,60 @@ class Release(Namelist):
 class ReleasesHeader(Namelist):
     NSPEC: int
     SPECNUM_REL: IntList
+
+
+class FormattedString:
+    """
+    Generic class to enforce a specific string format when printing the variable.
+    When provided as type in a Namelist dataclass, this ensures that the variable will
+    be printed using that file format when writing the namelist file.
+    Usage:
+        the following:
+        ```
+            f = FormattedString(format)
+            s = print(f(value))
+        ```
+        if equivalent to `s = f'{value:format}'.
+
+        In a `Namelist` object use as:
+        ```
+        @dataclass
+        class File(Namelist):
+            var : FormattedString(format) [ = defaultValue]
+        ```
+    """
+    def __init__(self, fmt, value=None):
+        self.fmt = fmt
+        self.value = value
+
+    def __call__(self, value):
+        return FormattedString(self.fmt, value)
+
+    def __repr__(self):
+        if self.value is not None :
+            fmt = '{:' + self.fmt + '}'
+            return fmt.format(self.value)
+        else :
+            return ''
+
+@dataclass
+class Species(Namelist):
+    species: str = ""
+    decay: FormattedString('18.1f') = -999.9
+    weta_gas: FormattedString('18.1e') = -9.9e-9
+    wetb_gas: FormattedString('18.2f') = 0.0
+    crain_aero: FormattedString('18.1e') = -9.9e-9
+    csnow_aero: FormattedString('18.2f') = -9.9e-9
+    ccn_aero: FormattedString('18.1e') = -9.9e-9
+    in_aero: FormattedString('18.2f') = -9.9e-9
+    reldiff: FormattedString('18.1f') = -9.9
+    henry: FormattedString('18.1e') = 0.0
+    f0: FormattedString('18.1f') = 0.0
+    density: FormattedString('18.1e') = -9.9e9
+    dquer : FormattedString('18.1e') = 0.0
+    dsigma: FormattedString('18.1e') = 0.0
+    dryvel: FormattedString('18.2f') = -9.99
+    ohcconst: FormattedString('18.2e') = -9.99
+    ohdconst: FormattedString('8.2f') = -9.9e-9
+    ohnconst: FormattedString('8.2f') = 2.0
+    weightmolar: FormattedString('18.2f') = -999.9
