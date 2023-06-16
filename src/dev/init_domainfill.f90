@@ -51,6 +51,7 @@ subroutine init_domainfill
     use random_mod
 
     use particles_mod, only : particles, pp
+    use settings,      only : config
 
     implicit none
 
@@ -306,9 +307,9 @@ subroutine init_domainfill
     !*****************************************************
 
     ! ESO :TODO: this warning need to be moved further up, else out-of-bounds error earlier
-    if (numpart.gt.maxpart) then
+    if (numpart > config%maxpart) then
         write(*,*) 'numpart too large: change source in init_atm_mass.f'
-        write(*,*) 'numpart: ',numpart,' maxpart: ',maxpart
+        write(*,*) 'numpart: ',numpart,' maxpart: ', config%maxpart
     endif
 
 

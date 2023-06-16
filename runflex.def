@@ -2,11 +2,15 @@ Bootstrap: localimage
 From: runflexenv.simg
 
 %post
+    chmod a+rx /runflex
     cd /runflex
     rm -f *.simg *.sif
     make clean
     make build
     make install
+
+    cd /runflex
+    chmod a+rx .git 
 
 %files
 	. /runflex

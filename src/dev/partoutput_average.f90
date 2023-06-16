@@ -38,6 +38,7 @@ subroutine partoutput_average(itime)
     use par_mod
     use com_mod
     use particles_mod, only : particles, pp
+    use settings,      only : config
 
     implicit none
 
@@ -51,11 +52,11 @@ subroutine partoutput_average(itime)
     real :: tr(2),tri,zlim
     character :: adate*8,atime*6
 
-    integer(kind=2) :: ishort_xlon(maxpart),ishort_ylat(maxpart),ishort_z(maxpart)
-    integer(kind=2) :: ishort_topo(maxpart),ishort_tro(maxpart),ishort_hmix(maxpart)
-    integer(kind=2) :: ishort_pv(maxpart),ishort_rho(maxpart),ishort_qv(maxpart)
-    integer(kind=2) :: ishort_tt(maxpart),ishort_uu(maxpart),ishort_vv(maxpart)
-    integer(kind=2) :: ishort_energy(maxpart)
+    integer(kind=2) :: ishort_xlon(config%maxpart), ishort_ylat(config%maxpart), ishort_z(config%maxpart)
+    integer(kind=2) :: ishort_topo(config%maxpart), ishort_tro(config%maxpart), ishort_hmix(config%maxpart)
+    integer(kind=2) :: ishort_pv(config%maxpart), ishort_rho(config%maxpart), ishort_qv(config%maxpart)
+    integer(kind=2) :: ishort_tt(config%maxpart), ishort_uu(config%maxpart), ishort_vv(config%maxpart)
+    integer(kind=2) :: ishort_energy(config%maxpart)
 
 
     ! Determine current calendar date, needed for the file name

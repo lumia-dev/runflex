@@ -49,8 +49,9 @@ subroutine releaseparticles(itime)
     use xmass_mod
     use par_mod
     use com_mod
-    use random_mod, only: ran1
+    use random_mod,    only : ran1
     use particles_mod, only : particles, pp
+    use settings,      only : config 
 
     implicit none
 
@@ -150,7 +151,7 @@ subroutine releaseparticles(itime)
             yaux=ypoint2(i)-ypoint1(i)
             zaux=zpoint2(i)-zpoint1(i)
             do j=1,numrel                       ! loop over particles to be released this time
-                do ipart=minpart,maxpart          ! search for free storage space
+                do ipart = minpart, config%maxpart          ! search for free storage space
 
                     ! If a free storage space is found, attribute everything to this array element
                     !*****************************************************************************
@@ -391,8 +392,8 @@ subroutine releaseparticles(itime)
                     nullify(pp)
 
                 end do  ! i=1:numpoint
-                if (ipart > maxpart) then
-                    print*, ipart, maxpart
+                if (ipart > config%maxpart) then
+                    print*, ipart, config%maxpart
                     write(*,*) '#####################################################'
                     write(*,*) '#### FLEXPART MODEL SUBROUTINE RELEASEPARTICLES: ####'
                     write(*,*) '####                                             ####'

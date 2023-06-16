@@ -145,7 +145,7 @@ program flexpart
 
     ! Initialize arrays in com_mod
     !*****************************
-    call com_mod_allocate_part(maxpart)
+    call com_mod_allocate_part(config%maxpart)
 
     ! Read the age classes to be used
     !********************************
@@ -221,7 +221,7 @@ program flexpart
 
     ! Initialize all particles to non-existent
     !*****************************************
-    call init_particles(maxpart)
+    call init_particles(config%maxpart)
 
     ! For continuation of previous run, read in particle positions
     !*************************************************************

@@ -49,13 +49,14 @@ subroutine convmix(itime,metdata_format)
     use class_gribfile
 
     use particles_mod, only : particles, pp
+    use settings,      only : config
 
     implicit none
 
     integer :: igr,igrold, ipart, itime, ix, j, inest
     integer :: ipconv
     integer :: jy, kpart, ktop, ngrid,kz
-    integer :: igrid(maxpart), ipoint(maxpart), igridn(maxpart,maxnests)
+    integer :: igrid(config%maxpart), ipoint(config%maxpart), igridn(config%maxpart, maxnests)
     integer :: metdata_format
 
     ! itime [s]                 current time

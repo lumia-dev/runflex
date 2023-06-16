@@ -76,6 +76,7 @@ subroutine readcommand
 
   use par_mod
   use com_mod
+  use settings, only : config
 
   implicit none
 
@@ -344,7 +345,7 @@ subroutine readcommand
           write(*,*) ' #### Release is performed above ground lev    #### '
         end if
          WETBKDEP=.true.
-         allocate(xscav_frac1(maxpart,maxspec))
+         allocate(xscav_frac1(config%maxpart, maxspec))
      case (4)  ! 4 .. dry deposition in outputfield
          ind_rel = 4
          if (lroot) then
@@ -353,7 +354,7 @@ subroutine readcommand
            write(*,*) ' #### Release is performed above ground lev    #### '
          end if
          DRYBKDEP=.true.
-         allocate(xscav_frac1(maxpart,maxspec))
+         allocate(xscav_frac1(config%maxpart, maxspec))
      end select
   endif
 

@@ -11,7 +11,7 @@
 !*******************************************************************************
 
 module com_mod
-    use par_mod,  only : dp, numpath, maxnests, maxageclass, maxspec, ni, maxreceptor, maxpart, maxrand
+    use par_mod,  only : dp, numpath, maxnests, maxageclass, maxspec, ni, maxreceptor, maxrand
     use par_mod,  only : numclass, nymax, nxmax, maxcolumn, maxwf, nzmax, nxmaxn, nymaxn,  nwzmax, nuvzmax, numwfmem
 
     implicit none

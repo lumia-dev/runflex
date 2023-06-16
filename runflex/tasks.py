@@ -3,7 +3,7 @@
 import subprocess
 import sys
 from pandas import Timestamp, Timedelta
-from omegaconf import DictConfig
+from omegaconf import DictConfig, OmegaConf
 from runflex.utilities import checkpath
 from runflex.meteo import Meteo
 from runflex.releases import Releases
@@ -167,6 +167,19 @@ class Task:
         shutil.copy(getfile('surfdata.t'), self.rundir)
         shutil.copy(getfile('surfdepo.t'), self.rundir)
         shutil.copy(getfile('IGBP_int1.dat'), self.rundir)
+        
+    def write_rcfile(self) -> Union[None, Path]:
+        """
+        Settings from the "flexpart" section of the yaml file are passed directly to
+        FLEXPART, via a "flexpart.rc" rc-file.
+        """
+
+        if 'flexpart' in self.rcf:
+            yaml = OmegaConf.to_yaml(self.rcf.flexpart)
+            fname = self.rundir / 'flexpart.rc'
+            with open(fname, 'w') as fid :
+                fid.write(yaml)
+            return fname
 
     def setup(self) -> None:
 
@@ -190,6 +203,9 @@ class Task:
 
         # land use and surfdepo
         self.copy_datafiles()
+
+        # setup rc-file
+        self.write_rcfile()
 
         # flexpart.x
         self.flexpart.setup(Path(self.rundir) / 'flexpart.x')

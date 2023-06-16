@@ -104,6 +104,7 @@ subroutine timemanager(metdata_format)
     use particles_mod,     only : particles, pp, update_variables
     use output_mod,        only : output_particles_final_position
     use netcdf_output_mod, only : concoutput_netcdf, concoutput_nest_netcdf, concoutput_surf_netcdf, concoutput_surf_nest_netcdf
+    use settings,          only : config
 
     implicit none
 
@@ -311,7 +312,7 @@ subroutine timemanager(metdata_format)
                     n = numpart
                     do j = 1, numpart
                         if (ldirect * itime >= ldirect * itrasplit(j)) then
-                            if (n < maxpart) then
+                            if (n < config%maxpart) then
                                 n = n + 1
                                 itrasplit(j) = 2 * (itrasplit(j) - itramem(j)) + itramem(j)
                                 itrasplit(n) = itrasplit(j)

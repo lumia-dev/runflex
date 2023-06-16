@@ -7,7 +7,9 @@ module settings
 
     private
 
-    public :: config, read_config, init_calendar
+    public :: config, read_config, init_calendar, maxpart
+
+    integer :: maxpart
 
     type settings_dict
         logical              :: userc=.false.   ! default is still to not use a rcfile
@@ -31,6 +33,7 @@ module settings
             if (config%userc) then
                 call readrc(rcf, 'compute.blh', config%blh, status, default=config%blh)
                 call readrc(rcf, 'compute.transport', config%transport, status, default=config%transport)
+                call readrc(rcf, 'npartmax', config%maxpart, status)
             end if
 
             call Done(rcf, status)

@@ -38,6 +38,7 @@ subroutine partoutput_short(itime)
     use par_mod
     use com_mod
     use particles_mod, only : particles, pp
+    use settings,      only : config
 
     implicit none
 
@@ -47,8 +48,8 @@ subroutine partoutput_short(itime)
     real :: xlon,ylat,zlim,dt1,dt2,dtt,ddx,ddy,rddx,rddy,p1,p2,p3,p4,topo
     character :: adate*8,atime*6
 
-    integer(kind=2) :: idump(3,maxpart)
-    integer :: i4dump(maxpart)
+    integer(kind=2) :: idump(3, config%maxpart)
+    integer :: i4dump(config%maxpart)
 
 
     ! Determine current calendar date, needed for the file name

@@ -76,7 +76,7 @@ class Observations(DataFrame):
         """
 
         obs = []
-        default_key = '\*'
+        default_key = '*'
         defaults = conf.get(default_key, {})
         for site in [_ for _ in conf.keys() if _ != default_key]:
             df = DataFrame(columns=['time', 'lat', 'lon', 'alt', 'height', 'code'])

@@ -56,11 +56,12 @@ subroutine plumetraj(itime)
     use com_mod
     use mean_mod
     use particles_mod, only : particles, pp
+    use settings,      only : config
 
     implicit none
 
     integer :: itime,ix,jy,ixp,jyp,indexh,i,j,k,m,n,il,ind,indz,indzp
-    real :: xl(maxpart),yl(maxpart),zl(maxpart)
+    real :: xl(config%maxpart), yl(config%maxpart), zl(config%maxpart)
     real :: xcenter,ycenter,zcenter,dist,distance,rmsdist,zrmsdist
 
     real :: xclust(ncluster),yclust(ncluster),zclust(ncluster)

@@ -46,7 +46,8 @@ subroutine boundcond_domainfill(itime,loutend)
     use point_mod
     use par_mod
     use com_mod
-    use random_mod, only: ran1
+    use random_mod, only : ran1
+    use settings,   only : config
 
     use particles_mod, only : particles, pp
 
@@ -229,7 +230,7 @@ subroutine boundcond_domainfill(itime,loutend)
                 endif
 
                 do m=1,mmass
-                    do ipart=minpart,maxpart
+                    do ipart = minpart, config%maxpart
 
                         ! If a vacant storage space is found, attribute everything to this array element
                         !*****************************************************************************
@@ -336,7 +337,7 @@ subroutine boundcond_domainfill(itime,loutend)
 
                         nullify(pp)
                     end do
-                    if (ipart.gt.maxpart) &
+                    if (ipart > config%maxpart) &
                         stop 'boundcond_domainfill.f: too many particles required'
 73                            minpart=ipart+1
 71                            continue
@@ -468,7 +469,7 @@ subroutine boundcond_domainfill(itime,loutend)
                 endif
 
                 do m=1,mmass
-                    do ipart=minpart,maxpart
+                    do ipart = minpart, config%maxpart
 
                         ! If a vacant storage space is found, attribute everything to this array element
                         !*****************************************************************************
@@ -572,7 +573,7 @@ subroutine boundcond_domainfill(itime,loutend)
                         endif
                         nullify(pp)
                     end do
-                    if (ipart.gt.maxpart) stop 'boundcond_domainfill.f: too many particles required'
+                    if (ipart > config%maxpart) stop 'boundcond_domainfill.f: too many particles required'
 173                 minpart=ipart+1
 171                 continue
                 end do
