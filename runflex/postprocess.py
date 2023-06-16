@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 from netCDF4 import Dataset, chartostring, Group
 from h5py import File
-from pandas import DataFrame, Timestamp, Timedelta, TimedeltaIndex
+from pandas import DataFrame, Timestamp, Timedelta, TimedeltaIndex, DatetimeIndex
 import time
 import os
 from loguru import logger
@@ -16,14 +16,29 @@ from git import Repo
 
 
 @dataclass
+class Coordinates:
+    lon : float = None
+    lat : float = None 
+    time : Timestamp = None
+    
+    
+@dataclass
+class SimpleGrid:
+    lat : NDArray = None
+    lon : NDArray = None
+    time : DatetimeIndex = None
+    height : float = None
+
+
+@dataclass
 class Release:
     data: NDArray
     origin: Timestamp
     dt: Timedelta
     release_attributes: dict = field(default_factory=dict)
     run_attributes: dict = field(default_factory=dict)
-    coordinates: SimpleNamespace = SimpleNamespace(lon=None, lat=None, time=None)
-    grid: SimpleNamespace = SimpleNamespace(lon=None, lat=None, time=None)
+    coordinates: Coordinates = field(default_factory=Coordinates)
+    grid: SimpleNamespace = field(default_factory=SimpleGrid)
     specie: dict = field(default_factory=dict)
     nshift: int = 0
 
@@ -151,7 +166,7 @@ class GridTimeFile:
         self.dt = Timedelta(seconds=self.ds.loutstep)
         self.start = Timestamp(self.ds.ibdate + self.ds.ibtime)
         self.end = Timestamp(self.ds.iedate + self.ds.ietime)
-        self.coordinates = SimpleNamespace(
+        self.coordinates = Coordinates(
             lon=self['longitude'][:].data,
             lat=self['latitude'][:].data,
             time=array([self.end + Timedelta(seconds=_) - self.dt / 2 for _ in self['time'][:].data])
@@ -180,7 +195,7 @@ class GridTimeFile:
         grid = meshgrid(range(nt), range(nlat), range(nlon), indexing='ij')
         height = self['height'][:].data
         assert len(height == 1), logger.critical("This script is only adapted for single-layer footprints")
-        self.grid = SimpleNamespace(
+        self.grid = SimpleGrid(
             time=grid[0].reshape(-1),
             lat=grid[1].reshape(-1),
             lon=grid[2].reshape(-1),
