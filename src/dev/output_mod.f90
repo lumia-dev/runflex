@@ -74,6 +74,9 @@ module output_mod
             call nf90_err(nf90_def_var(grpid, 'temperature', nf90_float, (/dimid/), varid))
             call nf90_err(nf90_put_var(grpid, varid, parts%temperature))
 
+            call nf90_err(nf90_def_var(grpid, 'pressure', nf90_float, (/dimid/), varid))
+            call nf90_err(nf90_put_var(grpid, varid, parts%pressure))
+
             !call nf90_err(nf90_def_var(fid, 'mass', nf90_float, (/dimid/), varid))
             !call nf90_err(nf90_put_var(fid, varid, particles%mass))
 

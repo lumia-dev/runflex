@@ -13,11 +13,11 @@ logger.remove()
 logger.add(sys.stderr, level=args.verbosity)
 
 # Load the settings
-rcf = runflex.read_conf(**vars(args))
+dconf = runflex.read_conf(**vars(args))
 
 # Compile
 if args.compile :
-    comp = runflex.compile(rcf)
+    comp = runflex.compile(dconf)
 
 if args.footprints :
-    tasks = runflex.calc_footprints(rcf)
+    tasks = runflex.calc_footprints(dconf)

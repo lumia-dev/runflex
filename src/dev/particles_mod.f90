@@ -1,6 +1,9 @@
 module particles_mod
 
     use par_mod, only : dp
+    use com_mod, only : lsynctime, nx, ny
+
+    implicit none
 
     type type_particles
         integer          :: number
@@ -20,12 +23,13 @@ module particles_mod
         integer          :: release_time
 
         ! used for output only :
-        real             :: lon, lat
+        real(8)          :: lon, lat
         real             :: oro
         real             :: potential_vorticity
         real             :: specific_humidity
         real             :: density
         real             :: temperature
+        real             :: pressure
         real             :: pbl_height
         real             :: tropopause_height
 
@@ -42,7 +46,6 @@ module particles_mod
     type(type_particles), dimension(:), allocatable, target :: particles
 
     type(type_particles), pointer :: pp
-
 
     contains
 
@@ -62,22 +65,23 @@ module particles_mod
 
 
     subroutine update(self, itime)
-        use com_mod, only : oro, pv, qv, rho, hmix, tropopause, tt
+        use com_mod, only : oro, pv, qv, rho, hmix, tropopause, tt, prs
         class(type_particles) :: self
         integer, intent(in)   :: itime
 
         ! Check on the time and not on the "active" status (this way, particles that just got deactivated
         ! in this time step will be accounted for
-        if ((itime == self%t)) then
+        ! if ((itime + lsynctime == self%t)) then
+        if (pp%active) then
             self%oro = self%interp_lon_lat(oro)
             self%potential_vorticity = self%interp_lon_lat_alt_time(pv, itime)
             self%specific_humidity = self%interp_lon_lat_alt_time(qv, itime)
             self%density = self%interp_lon_lat_alt_time(rho, itime)
             self%temperature = self%interp_lon_lat_alt_time(tt, itime)
+            self%pressure = self%interp_lon_lat_alt_time(prs, itime)
             self%pbl_height = self%interp_lon_lat_time(hmix(:, :, 1, :), itime)
             self%tropopause_height = self%interp_lon_lat_time(tropopause(:, :, 1, :), itime)
         end if
-
     end subroutine update
 
 
@@ -85,6 +89,7 @@ module particles_mod
         use com_mod, only : xlon0, dx, ylat0, dy, xtra1, ytra1, numpart, ztra1
 
         integer, intent(in) :: itime
+        integer             :: ipart
 
         ! The following fields need to be calculated, when the particle is synchronized with the model
         do ipart = 1, numpart
@@ -108,7 +113,7 @@ module particles_mod
         real, dimension(0:, 0:), intent(in) :: field
         real                                :: value
 
-        real    :: dlon, dlat
+        real(8) :: dlon, dlat
         integer :: ilon1, ilat1, ilon2, ilat2
 
         ilon1 = int(self%x)
@@ -120,14 +125,14 @@ module particles_mod
         if (ilon2 > nx - 1) ilon2 = ilon1
         if (ilat2 > ny - 1) ilat2 = ilat1
 
-        dlon = self%x - ilon
-        dlat = self%y - ilat
+        dlon = self%x - ilon1
+        dlat = self%y - ilat1
 
-        value = (1 - dlon) * (1 - dlat) * field(ilon, ilat) &
-                + dlon * (1 - dlat) * field(ilon + 1, ilat) &
-                + (1 - dlon) * dlat * field(ilon, ilat + 1) &
-                + dlon * dlat * field(ilon + 1, ilat + 1)
-
+        value = (1 - dlon) * (1 - dlat) * field(ilon1, ilat1) &
+                + dlon * (1 - dlat) * field(ilon2, ilat1) &
+                + (1 - dlon) * dlat * field(ilon1, ilat2) &
+                + dlon * dlat * field(ilon2, ilat2)
+        
     end function interp_lon_lat
 
 
@@ -138,6 +143,7 @@ module particles_mod
         real, dimension(0:, 0:, :), intent(in)  :: field
         real    :: value
         real    :: v1, v2
+        real    :: dz1, dz2
         real    :: z1, z2
         integer :: ilev
 
@@ -164,7 +170,7 @@ module particles_mod
         real    :: v1, v2
         real    :: dt1, dt2
 
-        if (self%t == itime) then
+        if (self%t == itime + lsynctime) then
             dt1 = real(self%t - memtime(1))
             dt2 = real(memtime(2) - self%t)
 
@@ -191,7 +197,7 @@ module particles_mod
         real    :: v1, v2
         real    :: dt1, dt2
 
-        if (self%t == itime) then
+        if (self%t == itime + lsynctime) then
             dt1 = real(self%t - memtime(1))
             dt2 = real(memtime(2) - self%t)
 

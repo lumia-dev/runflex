@@ -52,7 +52,7 @@ class Task:
         self.rundir = checkpath(self.rundir).absolute()
 
         # Make sure rc-variables are updated
-        self.rcf.paths.run = self.rundir
+        self.rcf.paths.run = Path(self.rundir)
 
         if not self.interactive:
             logger.info(f"Task {self.jobid} logging to {self.rcf.run.logfile}")

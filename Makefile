@@ -15,6 +15,9 @@ build:
 	python runflex/compile.py --build ${BUILDDIR}-stable --src ${SRC_MAIN} --extra ${SRC_EXTRA} --makefile ${MAKEFILE}
 	python runflex/compile.py --build ${BUILDDIR}-dev --src ${SRC_MAIN} --extra ${SRC_DEV} --makefile ${MAKEFILE}
 
+flexpart:
+	python runflex/compile.py --build ${BUILDDIR}-dev --src ${SRC_MAIN} --extra ${SRC_DEV} --makefile ${MAKEFILE}
+
 install:
 	python -m pip install -e .[interactive]
 
@@ -27,7 +30,7 @@ uninstall:
 	pip uninstall runflex
 
 container:
-	singularity build --fakeroot runflex.simg runflex.def
+	singularity build runflex.simg runflex.def
 
 envcontainer:
 	singularity build --fakeroot runflexenv.simg runflexenv.def

@@ -134,7 +134,14 @@ class Observations(DataFrame):
             obs.loc[:, 'obsid'] = obs.gen_obsid()
         return obs
 
-    def select(self, time_range=('1900', '2100'), lon_range=(-360, 360), lat_range=(-90, 90), include: List[str] = None, exclude: List[str] = None) -> "Observations":
+    def select(
+        self, 
+        time_range=('1900', '2100'), 
+        lon_range=(-360, 360), 
+        lat_range=(-90, 90), 
+        include: List[str] = None, 
+        exclude: List[str] = None
+        ) -> "Observations":
         """
         Filter out data that are outside the requested lat/lon/time intervals. The default values allows any (reasonable) coordinates.
         Arguments:

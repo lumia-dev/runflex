@@ -12,10 +12,11 @@ module settings
     integer :: maxpart
 
     type settings_dict
-        logical              :: userc=.false.   ! default is still to not use a rcfile
-        logical              :: blh=.false.     ! default is not to compute blh
-        logical              :: transport=.true.! transport of particles can be disabled if we only want to compute blh
-        type(datetime)       :: start, end
+        logical         :: userc=.false.   ! default is still to not use a rcfile
+        logical         :: blh=.false.     ! default is not to compute blh
+        logical         :: transport=.true.! transport of particles can be disabled if we only want to compute blh
+        type(datetime)  :: start, end
+        integer         :: maxpart
     end type settings_dict
 
     type(trcfile) :: rcf
@@ -31,8 +32,8 @@ module settings
             call rcfile_init(fname, config%userc)
 
             if (config%userc) then
-                call readrc(rcf, 'compute.blh', config%blh, status, default=config%blh)
-                call readrc(rcf, 'compute.transport', config%transport, status, default=config%transport)
+                call readrc(rcf, 'compute_blh', config%blh, status, default=config%blh)
+                call readrc(rcf, 'compute_transport', config%transport, status, default=config%transport)
                 call readrc(rcf, 'npartmax', config%maxpart, status)
             end if
 

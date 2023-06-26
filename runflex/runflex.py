@@ -36,6 +36,8 @@ def read_conf(**kwargs) -> DictConfig:
     else:
         conf.merge_with(OmegaConf.create())
 
+    conf.host = conf.get(kwargs['host'])
+
     # keywords can be overwritten using "--setkey key: value" command
     if kwargs.get('setkey', None):
         for kv in kwargs['setkey']:
@@ -145,7 +147,7 @@ def calc_footprints(conf: DictConfig) -> Union[Observations, QueueManager]:
 
     # Compute the footprints :
     queue = QueueManager(conf, obs, serial=conf.run.get('serial', False))
-    queue.dispatch()
+    queue.dispatch(maxdt=conf.releases.get('dt_max', '7D'))
 
     if conf.postprocess.get('lumia', False):
         handle_missing(obs, outpth)
@@ -164,6 +166,7 @@ p_footprints = parser.add_argument_group('Compute footprints')
 parser.add_argument('--rc', help='Main configuration file (yaml format)', type=Path)
 parser.add_argument('--setkey', action='append', help="use to override some rc-keys")
 parser.add_argument('--verbosity', '-v', default='INFO')
+parser.add_argument('--host', help='Which section of the config file should be used as "host"', default='host')
 
 # FLEXPART compilation :
 p_compile.add_argument('--compile', action='store_true')
@@ -182,7 +185,7 @@ p_footprints.add_argument('--only', action='append', help="run only this site (a
 p_footprints.add_argument('--nobs', default=None, help="Use this to limit the number of observations (i.e. for test purposes)", type=int)
 
 # FLEXPART run footprints options
-p_footprints.add_argument('--serial', '-i', action='store_true', default=False)
+p_footprints.add_argument('--serial', '-i', action='store_true', default=None)
 p_footprints.add_argument('--ncpus', '-n', help='Number of parallell processes', default=None, type=int)
 p_footprints.add_argument('--cleanup', action='store_true', help="Ensure that the rundir is clear from previous runs (set to False by default as this will erase anything in the scratch dir, even if it doesn't belong to runflex!)")
 p_footprints.add_argument('--recompute', action='store_false', help='Use --recompute to force runflex to recompute any already existing footprints')

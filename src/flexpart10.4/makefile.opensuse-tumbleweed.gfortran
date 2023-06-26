@@ -1,8 +1,10 @@
 FLEXPART-SERIAL = flexpart.x
 
-FC       = $(shell /usr/bin/nf-config --fc)
-NCFLAGS  = $(shell /usr/bin/nf-config --fflags) $(shell /usr/bin/nf-config --flibs)
-NFPREFIX = $(shell /usr/bin/nf-config --prefix)
+NFC = /usr/lib/hpc/gnu13/netcdf-fortran/4.5.3/bin/nc-config
+
+FC       = $(shell ${NFC} --fc)
+NCFLAGS  = $(shell ${NFC} --fflags) $(shell ${NFC} --flibs)
+NFPREFIX = $(shell ${NFC} --prefix)
 ECFLAGS  = -I/usr/include -leccodes_f90
 FFLAGS   = -O2 -m64 -cpp -mcmodel=medium -fconvert=little-endian -ffree-line-length-none -frecord-marker=4 -fbounds-check -DUSE_NCF ${NCFLAGS} ${ECFLAGS} -Wl,-R${NFPREFIX}/lib64/
 

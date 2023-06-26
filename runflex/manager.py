@@ -18,6 +18,8 @@ class QueueManager:
         # self.rcfile = os.path.join(self.rcf.paths.global_scratch, 'flexpart.rc')
         self.serial = serial
         self.ncpus = self.rcf.run.get('ncpus', cpu_count())
+        if self.serial :
+            self.ncpus = 1
 
     def dispatch(self, nobsmax: int = None, maxdt: Timedelta = '7D', skiptasks: List[int] = None, chunks : List[int] = None) -> List[Task]:
         tasks = self.create_tasks(nobsmax=nobsmax, maxdt=maxdt, skiptasks=skiptasks, chunks=chunks)

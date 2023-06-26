@@ -23,6 +23,7 @@ tempdir = TempDir()
 
 
 OmegaConf.register_new_resolver("prefix", lambda x: prefix.joinpath(x))
+OmegaConf.register_new_resolver("runflex", lambda x: prefix.joinpath(x))
 OmegaConf.register_new_resolver("file", lambda x: getfile(x))
 OmegaConf.register_new_resolver("rclone", lambda x: Rclone(x))
 OmegaConf.register_new_resolver('dt', lambda x: Timedelta(x))
