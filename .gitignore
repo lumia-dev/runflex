@@ -11,3 +11,4 @@ runflex/runflex
 *.simg
 /runflex.egg-info
 /build*
+*site
