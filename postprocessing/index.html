@@ -1,0 +1,457 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="utf-8">
+        <meta http-equiv="X-UA-Compatible" content="IE=edge">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        
+        
+        
+        <link rel="shortcut icon" href="../img/favicon.ico">
+        <title>Postprocessing - My Docs</title>
+        <link href="../css/bootstrap.min.css" rel="stylesheet">
+        <link href="../css/font-awesome.min.css" rel="stylesheet">
+        <link href="../css/base.css" rel="stylesheet">
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/10.5.0/styles/github.min.css">
+
+        <script src="../js/jquery-1.10.2.min.js" defer></script>
+        <script src="../js/bootstrap.min.js" defer></script>
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/10.5.0/highlight.min.js"></script>
+        <script>hljs.initHighlightingOnLoad();</script> 
+    </head>
+
+    <body>
+        <div class="navbar fixed-top navbar-expand-lg navbar-dark bg-primary">
+            <div class="container">
+                <a class="navbar-brand" href="..">My Docs</a>
+                <!-- Expander button -->
+                <button type="button" class="navbar-toggler" data-toggle="collapse" data-target="#navbar-collapse">
+                    <span class="navbar-toggler-icon"></span>
+                </button>
+
+                <!-- Expanded navigation -->
+                <div id="navbar-collapse" class="navbar-collapse collapse">
+                        <!-- Main navigation -->
+                        <ul class="nav navbar-nav">
+                            <li class="navitem">
+                                <a href=".." class="nav-link">Home</a>
+                            </li>
+                            <li class="navitem active">
+                                <a href="./" class="nav-link">Postprocessing</a>
+                            </li>
+                        </ul>
+
+                    <ul class="nav navbar-nav ml-auto">
+                        <li class="nav-item">
+                            <a href="#" class="nav-link" data-toggle="modal" data-target="#mkdocs_search_modal">
+                                <i class="fa fa-search"></i> Search
+                            </a>
+                        </li>
+                            <li class="nav-item">
+                                <a rel="prev" href=".." class="nav-link">
+                                    <i class="fa fa-arrow-left"></i> Previous
+                                </a>
+                            </li>
+                            <li class="nav-item">
+                                <a rel="next" class="nav-link disabled">
+                                    Next <i class="fa fa-arrow-right"></i>
+                                </a>
+                            </li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+        <div class="container">
+            <div class="row">
+                    <div class="col-md-3"><div class="navbar-light navbar-expand-md bs-sidebar hidden-print affix" role="complementary">
+    <div class="navbar-header">
+        <button type="button" class="navbar-toggler collapsed" data-toggle="collapse" data-target="#toc-collapse" title="Table of Contents">
+            <span class="fa fa-angle-down"></span>
+        </button>
+    </div>
+
+    
+    <div id="toc-collapse" class="navbar-collapse collapse card bg-secondary">
+        <ul class="nav flex-column">
+            
+            <li class="nav-item" data-level="1"><a href="#lumia-postprocessing" class="nav-link">LUMIA postprocessing</a>
+              <ul class="nav flex-column">
+            <li class="nav-item" data-level="2"><a href="#lumia-file-format" class="nav-link">LUMIA file format</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
+            <li class="nav-item" data-level="2"><a href="#footprints-sensitivity-to-fluxes" class="nav-link">Footprints (sensitivity to fluxes)</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
+            <li class="nav-item" data-level="2"><a href="#final-positions-sensitivity-to-background-concentrations" class="nav-link">Final positions (sensitivity to background concentrations)</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
+              </ul>
+            </li>
+        </ul>
+    </div>
+</div></div>
+                    <div class="col-md-9" role="main">
+
+<h1 id="lumia-postprocessing">LUMIA postprocessing</h1>
+<p>The postprocessing is handled by the <code>runflex.postprocess.postprocess_task</code> function, called at the end of each task (<code>runflex.tasks.Task</code>), if the <code>postprocess.lumia</code> settings has been set to <code>True</code> (default <code>False</code>):</p>
+<ol>
+<li>Check that the FLEXPART simulation hasn't failed</li>
+<li>Determine the destination file (lumia format) of release (footprints are grouped in monthly, site-specific LUMIA footprint files).</li>
+<li>Open the FLEXPART <em>grid_time</em> file (<code>runflex.postprocess.GridTimeFile</code>):<ul>
+<li>retrieve the list and positions of footprints present in the file</li>
+<li>open the <em>particles_final.nc</em>, if it exists (<code>netCDF4.Dataset</code>)</li>
+</ul>
+</li>
+<li>For each destination file:<ul>
+<li>open the file (<code>runflex.LumiaFile.__init__</code>)</li>
+<li>For each of the observations that should end up in this file:<ul>
+<li>retrieve the footprint from the <em>grid_time</em> file (<code>runflex.postprocess.GridTimeFile.get</code>)</li>
+<li>convert it into sparse format (<code>runflex.Release.footprint</code>)</li>
+<li>store it in the destination file (<code>runflex.LumiaFile.add</code>)</li>
+</ul>
+</li>
+</ul>
+</li>
+</ol>
+<h2 id="lumia-file-format">LUMIA file format</h2>
+<p>LUMIA footprint files are in HDF5 format, and contain a set footprints (sensitivity to surface fluxes) and, optionally, the sensitivity to background concentrations (particles final position).</p>
+<p>The file is organized with a hierarchy of groups:</p>
+<ul>
+<li>at the root level:<ul>
+<li><strong>latitudes</strong> and <strong>longitudes</strong> variables (center of the grid points)</li>
+<li>a <em>origin</em> attribute, which contains a date used as reference for the time indices in the file</li>
+<li>a <em>run_loutstep</em> attribute (time step of the footprints)</li>
+<li>a large number of diagnostic attributes: such as run settings (settings passed through the FLEXPART <em>COMMAND</em> and <em>OUTGRID</em> files, prefixed with <em>run_</em>), species settings (FLEXPART <em>SPECIES</em> file, prefixed with <em>species_</em>), etc.</li>
+</ul>
+</li>
+<li>each footprint is contained in a <a href="https://confluence.hdfgroup.org/display/HDF5/HDF5+File+Organization">HDF5 group</a>, named after the observation ID (typically following the format [sitecode].[height]m.[date]-[time])<ul>
+<li>each group contains:<ul>
+<li>four variables: <strong>ilats</strong>, <strong>ilons</strong>, <strong>itims</strong> and <strong>sensi</strong>:<ul>
+<li><strong>sensi</strong> contains the non-zero components of the footprint. The <strong>sensi</strong> variables has three attributes: <em>units</em> (should be <em>s m3 kg-1</em>), *runflex_version" (date of the runflex git commit) and "runglex_commit" (hash of the runflex commit).</li>
+<li><strong>ilats</strong> and <strong>ilons</strong> contains the latitude and longitude indices of the elements in <strong>sensi</strong> (in the grid defined by the top-level <strong>latitude</strong> and <strong>longitude</strong> variables);</li>
+<li><strong>itims</strong> contains the temporal indices of the elements in <strong>sensi</strong>, on an axis defined by the top-level <em>origin</em> the absolute value of the <em>run_loutstep</em> attributes.</li>
+</ul>
+</li>
+<li>a set of diagnostic attributes (release characteristics + run characteristics if they differ from the top-level ones).</li>
+</ul>
+</li>
+<li>each group may also contain a <strong>background</strong> subgroup, with the following variables:<ul>
+<li>coordinates: <strong>lon</strong>, <strong>lat</strong>, <strong>height</strong>, <strong>time</strong></li>
+<li>state of the atmosphere / of the surface: <strong>surface_height</strong>, <strong>potential_vorticity</strong>, <strong>specific_humidity</strong>, <strong>air_density</strong>, <strong>pbl_height</strong>, <strong>tropopause_height</strong>, <strong>temperature</strong></li>
+<li>release info: <strong>release_time</strong></li>
+<li>state of the particles: <strong>active</strong></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+<p>Below is an example of partial <code>ncdump -h</code> output (limited to one observation) for one footprint file:</p>
+<pre><code>netcdf hun.115m.2018-11 {
+dimensions:
+        phony_dim_420 = 160 ;
+        phony_dim_421 = 200 ;
+variables:
+        float latitudes(phony_dim_420) ;
+                string latitudes:units = &quot;degrees North&quot; ;
+                string latitudes:info = &quot;center of the grid cells&quot; ;
+        float longitudes(phony_dim_421) ;
+                string longitudes:units = &quot;degrees East&quot; ;
+                string longitudes:info = &quot;center of the grid cells&quot; ;
+
+// global attributes:
+                string :run_Conventions = &quot;CF-1.6&quot; ;
+                string :run_title = &quot;FLEXPART model output&quot; ;
+                string :run_institution = &quot;NILU&quot; ;
+                string :run_source = &quot;Version 10.4 (2019-11-12) model output&quot; ;
+                string :run_history = &quot;2022-11-30 18:53 +0100  created by guillaume on donkey2&quot; ;
+                string :run_references = &quot;Stohl et al., Atmos. Chem. Phys., 2005, doi:10.5194/acp-5-2461-200&quot; ;
+                :run_outlon0 = -15.f ;
+                :run_outlat0 = 33.f ;
+                :run_dxout = 0.25f ;
+                :run_dyout = 0.25f ;
+                :run_ldirect = -1 ;
+                string :run_ibdate = &quot;20181029&quot; ;
+                string :run_ibtime = &quot;140000&quot; ;
+                string :run_iedate = &quot;20181115&quot; ;
+                string :run_ietime = &quot;150000&quot; ;
+                :run_loutstep = -3600 ;
+                :run_loutaver = -3600 ;
+                :run_loutsample = -900 ;
+                :run_itsplit = 99999999 ;
+                :run_lsynctime = -900 ;
+                :run_ctl = 0.2f ;
+                :run_ifine = 5 ;
+                :run_iout = 1 ;
+                :run_ipout = 0 ;
+                :run_lsubgrid = 1 ;
+                :run_lconvection = 1 ;
+                :run_lagespectra = 1209600 ;
+                :run_ipin = 0 ;
+                :run_ioutputforeachrelease = 1 ;
+                :run_iflux = 0 ;
+                :run_mdomainfill = 0 ;
+                :run_ind_source = 1 ;
+                :run_ind_receptor = 2 ;
+                :run_mquasilag = 0 ;
+                :run_nested_output = 0 ;
+                :run_surf_only = 0 ;
+                :run_linit_cond = 0 ;
+                string :origin = &quot;2018-11-01 00:00:00&quot; ;
+                :species_ohcconst = -9.e-10f ;
+                :species_ohdconst = -9.9f ;
+                string :species_units = &quot;s m3 kg-1&quot; ;
+                string :species_long_name = &quot;AIRTRACER&quot; ;
+                :species_decay = -0.07001485f ;
+                :species_weightmolar = 29.f ;
+                :species_vsetaver = 0.f ;
+
+
+group: hun.115m.20181130-183000 {
+  dimensions:
+    phony_dim_419 = 79504 ;
+  variables:
+    short ilats(phony_dim_419) ;
+    short ilons(phony_dim_419) ;
+    short itims(phony_dim_419) ;
+    float sensi(phony_dim_419) ;
+        string sensi:units = &quot;s m3 kg-1&quot; ;
+        string sensi:runflex_version = &quot;2022.11.18&quot; ;
+        string sensi:runflex_commit = &quot;a69d332c5a50b9cfa77625333ac801abacdca94a (2022-11-18 14:47:12+01:00)&quot; ;
+
+  // group attributes:
+        string :release_name = &quot;hun.115m.20181130-183000&quot; ;
+        :release_lat1 = 46.9558982849121 ;
+        :release_lat2 = 46.9558982849121 ;
+        :release_lon1 = 16.652099609375 ;
+        :release_lon2 = 16.652099609375 ;
+        :release_z1 = 115. ;
+        :release_z2 = 115. ;
+        :release_kindz = 1LL ;
+        string :release_start = &quot;2018-11-30 18:30:00&quot; ;
+        string :release_end = &quot;2018-11-30 18:30:00&quot; ;
+        :release_npart = 10000LL ;
+        :release_mass = 10000. ;
+        string :release_run_history = &quot;2022-11-30 20:46 +0100  created by guillaume on donkey2&quot; ;
+        string :release_run_ibdate = &quot;20181115&quot; ;
+        string :release_run_ibtime = &quot;220000&quot; ;
+        string :release_run_iedate = &quot;20181202&quot; ;
+        string :release_run_ietime = &quot;170000&quot; ;
+
+  group: background {
+    dimensions:
+        phony_dim_418 = 10000 ;
+    variables:
+        byte active(phony_dim_418) ;
+        float air_density(phony_dim_418) ;
+        float height(phony_dim_418) ;
+        float lat(phony_dim_418) ;
+        float lon(phony_dim_418) ;
+        float pbl_height(phony_dim_418) ;
+        float potential_vorticity(phony_dim_418) ;
+        int release_time(phony_dim_418) ;
+        float specific_humidity(phony_dim_418) ;
+        float surface_height(phony_dim_418) ;
+        float temperature(phony_dim_418) ;
+        int time(phony_dim_418) ;
+            string time:units = &quot;seconds since 2018-12-02 17:00:00&quot; ;
+            string time:calendar = &quot;proleptic_gregorian&quot; ;
+        float tropopause_height(phony_dim_418) ;
+    } // group background
+  } // group hun.115m.20181130-183000
+  ...
+}
+</code></pre>
+<h2 id="footprints-sensitivity-to-fluxes">Footprints (sensitivity to fluxes)</h2>
+<p>The footprints are converted from the native FLEXPART format (<em>grid_time</em> files) to the LUMIA footprint format described above. In the <em>grid_time</em> files, the footprints are stored in the <strong>spec001_ms</strong> variable:</p>
+<ul>
+<li>The variable has six dimensions (<em>nageclass, pointspec, time, height, latitude</em> and <em>longitude</em>), however, <em>nageclass</em> and <em>height</em> are normally of size 1, so the variable can be interpreted as a set of <em>n_releases</em> 3D arrays. </li>
+<li>The postprocessing method (<code>postprocess.GridTimeFile.get</code>) returns a <code>postprocess.Release</code> object, which gives access to the data as a set of one array of non-zero values (<strong>sensi</strong>) and coordinate indices (<strong>ilons</strong>, <strong>ilats</strong> and <strong>itims</strong>). It also applies units conversions (from <em>s.m<sup>3</sup>/kg</em> to <em>s.m<sup>2</sup>/mol</em>)</li>
+</ul>
+<p>The code</p>
+<pre><code class="language-python">from runflex import postprocess
+f = postprocess.GridTimeFile.get('grid_time_20200608000000')
+fp = f.get('xxx.1m.20200602-120000').footprint
+</code></pre>
+<p>is the equivalent of:</p>
+<pre><code class="language-python">from netCDF4 import Dataset, chartostring
+from numpy import meshgrid, nonzero, zeros
+
+# Retrieve the sparse version of the footprint &quot;xxx.1m.20200602-120000&quot; 
+# from the file &quot;grid_time_20200608000000.nc&quot;
+with Dataset('grid_time_20200608000000.nc') as ds:
+
+    # Retrieve dimensions
+    nlon = ds.dimensions['longitude'].size                          # in postprocess.GridTimeFile.__init__
+    nlat = ds.dimensions['latitude'].size
+    nrelease = ds.dimension['pointspec'].size
+
+    # Create gridded versions of the time, lons and lats coordinates
+    time, lons, lats = meshgrid(range(nt), range(nlat), range(nlon), indexing='ij')
+
+    # Retrieve the footprint index:
+    releases = [t.strip() for t in chartostring(ds['RELCOM'][:])]
+    i_release = releases.get(&quot;xxx.1m.20200602-120000&quot;)              # in postprocess.GridTimeFile.get
+
+    # Retrieve the first footprint of the file:
+    data = ds['spec001_ms'][:][0, i_release, :, 0, :, :]
+    indices = nonzero(data)                                         # in postprocess.Release.footprint
+    sensi = data[indices]
+    ilats = lats[indices]
+    ilons = lons[indices]
+    itims = times[indices]
+
+    # Apply units conversions (from s.m^3/kg to s.m^2/mol)
+    height = ds['height'][:][0]                # 
+    sensi *= 1000 * ds['spec001_ms'] / height
+
+# Reconstruct the full matrix (e.g. in lumia):
+fp = zeros((nt, nlat, nlon))
+fp[itims, ilats, ilons] = sensi
+</code></pre>
+<p>In order to facilitate the use of these footprints, the time indices are aligned, so that <code>itims = n</code> refers to the same date and time for all footprints in the file (this is because one lumia footprint file can contain footprints from several FLEXPART simulations):</p>
+<ul>
+<li>a reference time is defined (1st day of the month, 0:00). It is stored in the top-level <em>origin</em> attribute of the lumia footprint file.</li>
+<li>the value of <code>itims</code> is shifted by <code>nshift = (origin - run_start) / run_dt</code>, with <code>run_start</code> the end of the FLEXPART run (i.e. the <em>ibdate</em> and <em>ibtime</em> attributes, in backward mode), and <em>dt</em> the time step of the footprints, i.e. the <em>loutstep</em> attribute of the grid_time file:</li>
+</ul>
+<pre><code class="language-python">from pandas import Timestamp, Timedelta
+
+origin = Timestamp(2020, 6, 1)
+with Dataset('grid_time_20200608000000.nc') as ds:
+
+    # [...]
+
+    # adjust the time indices
+    run_start = Timestamp(ds.ibdate + ds.ibtime)
+    dt = Timedelta(ds.loutstep)
+    shift_t = (origin - run_start) / dt
+
+    itims += shift_t
+
+# Reconstruct the footprint, but aligning it with an annual array of emissions:
+origin_emis = Timestamp(2020, 6, 1)
+shift_t_emis = (origin - origin_emis) / dt
+fp = zeros((nt_year, nlat, nlon))
+fp[itims + shift_t_emis, ilat, ilons] = sensi
+</code></pre>
+<h2 id="final-positions-sensitivity-to-background-concentrations">Final positions (sensitivity to background concentrations)</h2>
+<p>The final position of the particles is written by FLEXPART in the <em>particles_final.nc</em> file, when running the <em>dev</em> branch (<code>output_mod.f90</code> file). The file stores the coordinates of the particles:
+- when they got deactivated (when they reached the domain boundary or their age limit)
+- or at the end of the simulation, for the particles that were still alive</p>
+<p>The file is structured in groups (one for each observation/release), with the following variables:</p>
+<ul>
+<li>coordinates: <strong>lon</strong>, <strong>lat</strong>, <strong>height</strong>, <strong>time</strong></li>
+<li>state of the atmosphere / of the surface: <strong>surface_height</strong>, <strong>potential_vorticity</strong>, <strong>specific_humidity</strong>, <strong>air_density</strong>, <strong>pbl_height</strong>, <strong>tropopause_height</strong>, <strong>temperature</strong></li>
+<li>release info: <strong>release_time</strong></li>
+<li>state of the particles: <strong>active</strong></li>
+</ul>
+<pre><code>netcdf particles_final {
+
+group: htm.150m.20180101-120000 {
+  dimensions:
+        particles = 10000 ;
+  variables:
+        float lon(particles) ;
+        float lat(particles) ;
+        float height(particles) ;
+        float surface_height(particles) ;
+        float potential_vorticity(particles) ;
+        float specific_humidity(particles) ;
+        float air_density(particles) ;
+        float pbl_height(particles) ;
+        float tropopause_height(particles) ;
+        float temperature(particles) ;
+        int release_time(particles) ;
+        int time(particles) ;
+                time:units = &quot;seconds since 2018-01-08 12:00:00&quot; ;
+                time:calendar = &quot;proleptic_gregorian&quot; ;
+        byte active(particles) ;
+  } // group htm.150m.20180101-120000
+  ... 
+}
+</code></pre>
+<p>The variables are all copied under the <code>background</code> subgroup of the corresponding observations in the lumia footprint files. However, for convenience, the <strong>time</strong> variable is adjusted from <strong>"seconds since [the start of the FLEXPART simulation]"</strong> to <strong>"seconds since [the "origin" of the file]"</strong>:</p>
+<ul>
+<li>the start of the FLEXPART simulation refers here to <em>iedate/ietime</em> in backward mode (<em>ibdate/ibtime</em> in forward mode)</li>
+<li>the origin of the file is the <em>origin</em> attribute, defined when processing the footprints.</li>
+</ul></div>
+            </div>
+        </div>
+
+        <footer class="col-md-12">
+            <hr>
+            <p>Documentation built with <a href="https://www.mkdocs.org/">MkDocs</a>.</p>
+        </footer>
+        <script>
+            var base_url = "..",
+                shortcuts = {"help": 191, "next": 78, "previous": 80, "search": 83};
+        </script>
+        <script src="../js/base.js" defer></script>
+        <script src="../search/main.js" defer></script>
+
+        <div class="modal" id="mkdocs_search_modal" tabindex="-1" role="dialog" aria-labelledby="searchModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h4 class="modal-title" id="searchModalLabel">Search</h4>
+                <button type="button" class="close" data-dismiss="modal"><span aria-hidden="true">&times;</span><span class="sr-only">Close</span></button>
+            </div>
+            <div class="modal-body">
+                <p>From here you can search these documents. Enter your search terms below.</p>
+                <form>
+                    <div class="form-group">
+                        <input type="search" class="form-control" placeholder="Search..." id="mkdocs-search-query" title="Type search term here">
+                    </div>
+                </form>
+                <div id="mkdocs-search-results" data-no-results-text="No results found"></div>
+            </div>
+            <div class="modal-footer">
+            </div>
+        </div>
+    </div>
+</div><div class="modal" id="mkdocs_keyboard_modal" tabindex="-1" role="dialog" aria-labelledby="keyboardModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h4 class="modal-title" id="keyboardModalLabel">Keyboard Shortcuts</h4>
+                <button type="button" class="close" data-dismiss="modal"><span aria-hidden="true">&times;</span><span class="sr-only">Close</span></button>
+            </div>
+            <div class="modal-body">
+              <table class="table">
+                <thead>
+                  <tr>
+                    <th style="width: 20%;">Keys</th>
+                    <th>Action</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td class="help shortcut"><kbd>?</kbd></td>
+                    <td>Open this help</td>
+                  </tr>
+                  <tr>
+                    <td class="next shortcut"><kbd>n</kbd></td>
+                    <td>Next page</td>
+                  </tr>
+                  <tr>
+                    <td class="prev shortcut"><kbd>p</kbd></td>
+                    <td>Previous page</td>
+                  </tr>
+                  <tr>
+                    <td class="search shortcut"><kbd>s</kbd></td>
+                    <td>Search</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+            <div class="modal-footer">
+            </div>
+        </div>
+    </div>
+</div>
+
+    </body>
+</html>

@@ -1,0 +1,334 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="utf-8">
+        <meta http-equiv="X-UA-Compatible" content="IE=edge">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <meta name="description" content="None">
+        
+        
+        <link rel="shortcut icon" href="img/favicon.ico">
+        <title>My Docs</title>
+        <link href="css/bootstrap.min.css" rel="stylesheet">
+        <link href="css/font-awesome.min.css" rel="stylesheet">
+        <link href="css/base.css" rel="stylesheet">
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/10.5.0/styles/github.min.css">
+
+        <script src="js/jquery-1.10.2.min.js" defer></script>
+        <script src="js/bootstrap.min.js" defer></script>
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/10.5.0/highlight.min.js"></script>
+        <script>hljs.initHighlightingOnLoad();</script> 
+    </head>
+
+    <body class="homepage">
+        <div class="navbar fixed-top navbar-expand-lg navbar-dark bg-primary">
+            <div class="container">
+                <a class="navbar-brand" href=".">My Docs</a>
+                <!-- Expander button -->
+                <button type="button" class="navbar-toggler" data-toggle="collapse" data-target="#navbar-collapse">
+                    <span class="navbar-toggler-icon"></span>
+                </button>
+
+                <!-- Expanded navigation -->
+                <div id="navbar-collapse" class="navbar-collapse collapse">
+                        <!-- Main navigation -->
+                        <ul class="nav navbar-nav">
+                            <li class="navitem active">
+                                <a href="." class="nav-link">Home</a>
+                            </li>
+                            <li class="navitem">
+                                <a href="postprocessing/" class="nav-link">Postprocessing</a>
+                            </li>
+                        </ul>
+
+                    <ul class="nav navbar-nav ml-auto">
+                        <li class="nav-item">
+                            <a href="#" class="nav-link" data-toggle="modal" data-target="#mkdocs_search_modal">
+                                <i class="fa fa-search"></i> Search
+                            </a>
+                        </li>
+                            <li class="nav-item">
+                                <a rel="prev" class="nav-link disabled">
+                                    <i class="fa fa-arrow-left"></i> Previous
+                                </a>
+                            </li>
+                            <li class="nav-item">
+                                <a rel="next" href="postprocessing/" class="nav-link">
+                                    Next <i class="fa fa-arrow-right"></i>
+                                </a>
+                            </li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+        <div class="container">
+            <div class="row">
+                    <div class="col-md-3"><div class="navbar-light navbar-expand-md bs-sidebar hidden-print affix" role="complementary">
+    <div class="navbar-header">
+        <button type="button" class="navbar-toggler collapsed" data-toggle="collapse" data-target="#toc-collapse" title="Table of Contents">
+            <span class="fa fa-angle-down"></span>
+        </button>
+    </div>
+
+    
+    <div id="toc-collapse" class="navbar-collapse collapse card bg-secondary">
+        <ul class="nav flex-column">
+            
+            <li class="nav-item" data-level="1"><a href="#usage" class="nav-link">Usage</a>
+              <ul class="nav flex-column">
+            <li class="nav-item" data-level="2"><a href="#compile-flexpart" class="nav-link">Compile flexpart</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
+            <li class="nav-item" data-level="2"><a href="#compute-footprints" class="nav-link">Compute footprints</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
+            <li class="nav-item" data-level="2"><a href="#singularityapptainer-wrapper" class="nav-link">Singularity/Apptainer wrapper</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
+              </ul>
+            </li>
+            
+            <li class="nav-item" data-level="1"><a href="#settings" class="nav-link">Settings</a>
+              <ul class="nav flex-column">
+            <li class="nav-item" data-level="2"><a href="#yaml-file-and-resolvers" class="nav-link">YAML file and resolvers</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
+            <li class="nav-item" data-level="2"><a href="#-host-argument" class="nav-link">--host argument</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
+            <li class="nav-item" data-level="2"><a href="#yaml-file-structure" class="nav-link">yaml file structure</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
+              </ul>
+            </li>
+        </ul>
+    </div>
+</div></div>
+                    <div class="col-md-9" role="main">
+
+<h1 id="usage">Usage</h1>
+<h2 id="compile-flexpart">Compile flexpart</h2>
+<p>There are two main ways to compile the code:
+1. via <code>runflex --compile --rc config.yaml</code> (can be combined with the <code>--footprints</code> option).
+2. via <code>make build</code>.</p>
+<p>The first option is typically made for compiling FLEXPART in a directory outside the <em>runflex</em> installation path (e.g. runflex is installed in <em>/runflex</em>, and you work in a project <em>/home/mpyproj</em>. Use <code>runflex --compile</code> to compile flexpart in that directory). The second option is meant for deploying runflex (and FLEXPART) on a new system. Under the hood, both options use the <code>runflex.compile.Flexpart</code> class.</p>
+<p>When compiling with <code>runflex</code> (first option above), the relevant config file settings are:</p>
+<ul>
+<li><code>paths.build</code>: where the code should be compiled</li>
+<li><code>paths.makefile</code>: which makefile to use</li>
+<li><code>paths.src</code>: where is the main source code</li>
+<li><code>paths.extras</code>: where is the <em>extra</em> source code: source files in that folder overwrite those in the <code>path.src</code> folder (that enables having different source codes for different projects, e.g. a <em>dev</em> code and a <em>stable</em> one).</li>
+</ul>
+<p>When compiling with <code>make</code> (second option), the four paths listed above are passed via the <code>--build</code>, <code>--makefile</code>, <code>--src</code> and <code>--extra</code> arguments of the <code>runflex/compile.py</code> script (called inside the <em>makefile</em>). The default <em>make</em> behaviour is to compile two branches of the code: one with <code>--extra</code> pointing to <em>src/extra</em> (compiled inside <em>build/flexpart/stable</em>), and one with <code>--extra</code> pointing to <em>src/dev</em> (compiled inside <em>build/flexpart/dev</em>).</p>
+<h2 id="compute-footprints">Compute footprints</h2>
+<p><code>runflex --footprints --rc config_file.yaml [options] --host hostname</code></p>
+<p>See the Settings section below for instruction on how to construct the <em>config_file.yaml</em> configuration file</p>
+<h2 id="singularityapptainer-wrapper">Singularity/Apptainer wrapper</h2>
+<h1 id="settings">Settings</h1>
+<h2 id="yaml-file-and-resolvers">YAML file and resolvers</h2>
+<p>Settings should be stored in a configuration file in <em>yaml</em> format. The file is parsed using omegaconf, which enables resolvers, i.e. the syntax <code>key : ${resolver:value}</code> will internally return <code>key = function(value)</code>, provided that the resolver "resolver" has been registered (see in runflex/config.py).</p>
+<p>The following resolvers are pre-defined:
+- <code>runflex</code>: <code>${runflex:value}</code> will return a path pointing to the file or folder "x", relative to where the "runflex" library is installed. For instance, <code>${runflex:inputs/COMMAND}</code> will point to the default "COMMAND" file.
+- <code>rclone</code>: <code>${rclone:remote:path} will return an instance of</code>runflex.archive.Rclone<code>(</code>Rclone(remote, path)<code>)
+-</code>tmp<code>:</code>${tmp:path}<code>will create a unique temporary directory inside the</code>path` directory.</p>
+<p>The resolvers can be combined: <code>${tmp:${runflex:build}}}</code> will create a temporary directory under the <code>build</code> directory of the local <em>runflex</em> installation.</p>
+<h2 id="-host-argument">--host argument</h2>
+<p>The <em>yaml</em> file should contain a <code>host</code> section pointing to the machine-specific settings (paths, etc.). However, instead of including it directly in the yaml file, it is possible to specify which section should be used as <code>host</code>, by running <code>runflex</code> with the <code>--host</code> argument:</p>
+<p><code>runflex --host laptop --rc config.yaml --footprints</code></p>
+<p>Provided that the <code>yaml</code> file has a section called <code>laptop</code>, it will be automatically renamed (in memory) as <code>host</code>. For instance, the yaml file may look like this:</p>
+<pre><code>laptop:
+    paths :
+        build : ${runflex:build}
+        src : ${runflex:src/flexpart10.4}
+        makefile : makefile.laptop
+        meteo : /data/FLEXPART/meteo
+
+hpc:
+    paths :
+        build : /scratch/flexpart/build
+        src : ${runflex:src/flexpart10.4}
+        makefile : makefile.hpc
+        meteo : /proj/FLEXPART/meteo/EA5/
+
+meteo :
+    path : ${host.paths.meteo}
+    ...
+
+...
+</code></pre>
+<p>Depending on the value of the <code>--host</code> argument, the <code>host.paths.build</code>, <code>host.paths.src</code>, <code>host.paths.makefile</code> and <code>host.paths.meteo</code> keys will point to those defined in the <code>laptop</code> section or in the <code>hpc</code> section.</p>
+<h2 id="yaml-file-structure">yaml file structure</h2>
+<h3 id="host-section">host section</h3>
+<p>Paths specific to the local machine where flexpart is run (this particular one whould be called with the <code>--host laptop</code> argument (see above).</p>
+<pre><code>laptop :
+  paths : 
+    build : build
+    run : run
+    src : ${runflex:src/flexpart10.4}
+    extras : ${runflex:src/dev}
+    makefile : makefile.ubuntu.gfortran
+    output : output
+    logfile : ${host.paths.run}/flexpart.out
+    command : ${file:COMMAND}
+    meteo : /scratch/FLEXPART/meteo
+</code></pre>
+<h3 id="run-section">run section</h3>
+<p>the <code>serial</code> option can be over-written by the <code>--serial</code> argument of <code>runflex</code> (this sets ncpus to 1). </p>
+<pre><code>run :
+  logfile : ${host.paths.logfile}
+  serial : no
+  ncpus : 8
+  releases_per_task : 50
+</code></pre>
+<h3 id="paths-section">paths section</h3>
+<pre><code>paths : ${host.paths}
+</code></pre>
+<p>The <code>paths</code> section should contain the following keys:
+- run : where FLEXPART is run (can be a temporary directory)
+- output : where FLEXPART final output is transferred (i.e. after postprocessing)
+- command : location of the COMMAND file
+- build : where FLEXPART is / should be built
+- meteo : path to the meteo files</p>
+<h3 id="observations">observations</h3>
+<pre><code>observations :
+  coordinates :
+    htm :
+      start : 1 jan 2018
+      end : 1 jan 2019
+      freq : 3H
+      lat : 56.0976
+      lon : 13.4189
+      alt : 115.0
+      height : 150
+      code : htm
+      range : from 12:00 to 18:00
+
+  release :
+    kindz :
+      threshold : 1000
+</code></pre>
+<p>The observations section can follow several conventions. Mainly, the release coordinates can be directly specified in the yaml file, as in the example above, or passed by through a file. See the <code>runflex.observations</code> module for more info.</p>
+<h3 id="outgrid">outgrid</h3>
+<p>How the FLEXPART "OUTGRID" file should be constructed:</p>
+<pre><code>outgrid :
+  x : [-15, 35, 0.25]    # [lon_min, lon_max, lon_step]
+  y : [33, 73, 0.25]     # [lat_min, lat_max, lat_step]
+  levels : [100]        # Height of the surface layer
+</code></pre>
+<h3 id="releases">releases:</h3>
+<p>Release characteristics.</p>
+<p>The "species" sub-category should either point to a "SPECIES" file, or provide keys to construct it (using default values in the "runflex.files.SPECIES" class).</p>
+<pre><code>releases :
+  length : 14
+  species : 
+    species : AIRTRACER
+    weightmolar : 29
+
+  mass : ${.npart}
+  npart : 10_000
+</code></pre>
+<h3 id="meteo">meteo</h3>
+<pre><code>meteo :
+  archive : ${rclone:swestore:FLEXPART/meteo/ea.eurocom025x025}
+  prefix : EA
+  interv : 1h
+  logfile : meteo.log
+</code></pre>
+<h3 id="postprocessing">postprocessing</h3>
+<pre><code>postprocess :
+  lumia : yes
+</code></pre>
+<h3 id="flexpart">flexpart</h3>
+<p>Additional rc-keys to be passed to FLEXPART (provided that the version of FLEXPART you use supports rc-files. This is not the case with the vanilla FLEXPART10.4 branch).</p>
+<pre><code>flexpart :
+  npartmax : 500_000
+</code></pre></div>
+            </div>
+        </div>
+
+        <footer class="col-md-12">
+            <hr>
+            <p>Documentation built with <a href="https://www.mkdocs.org/">MkDocs</a>.</p>
+        </footer>
+        <script>
+            var base_url = ".",
+                shortcuts = {"help": 191, "next": 78, "previous": 80, "search": 83};
+        </script>
+        <script src="js/base.js" defer></script>
+        <script src="search/main.js" defer></script>
+
+        <div class="modal" id="mkdocs_search_modal" tabindex="-1" role="dialog" aria-labelledby="searchModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h4 class="modal-title" id="searchModalLabel">Search</h4>
+                <button type="button" class="close" data-dismiss="modal"><span aria-hidden="true">&times;</span><span class="sr-only">Close</span></button>
+            </div>
+            <div class="modal-body">
+                <p>From here you can search these documents. Enter your search terms below.</p>
+                <form>
+                    <div class="form-group">
+                        <input type="search" class="form-control" placeholder="Search..." id="mkdocs-search-query" title="Type search term here">
+                    </div>
+                </form>
+                <div id="mkdocs-search-results" data-no-results-text="No results found"></div>
+            </div>
+            <div class="modal-footer">
+            </div>
+        </div>
+    </div>
+</div><div class="modal" id="mkdocs_keyboard_modal" tabindex="-1" role="dialog" aria-labelledby="keyboardModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h4 class="modal-title" id="keyboardModalLabel">Keyboard Shortcuts</h4>
+                <button type="button" class="close" data-dismiss="modal"><span aria-hidden="true">&times;</span><span class="sr-only">Close</span></button>
+            </div>
+            <div class="modal-body">
+              <table class="table">
+                <thead>
+                  <tr>
+                    <th style="width: 20%;">Keys</th>
+                    <th>Action</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td class="help shortcut"><kbd>?</kbd></td>
+                    <td>Open this help</td>
+                  </tr>
+                  <tr>
+                    <td class="next shortcut"><kbd>n</kbd></td>
+                    <td>Next page</td>
+                  </tr>
+                  <tr>
+                    <td class="prev shortcut"><kbd>p</kbd></td>
+                    <td>Previous page</td>
+                  </tr>
+                  <tr>
+                    <td class="search shortcut"><kbd>s</kbd></td>
+                    <td>Search</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+            <div class="modal-footer">
+            </div>
+        </div>
+    </div>
+</div>
+
+    </body>
+</html>
+
+<!--
+MkDocs version : 1.4.2
+Build Date UTC : 2023-06-26 13:07:49.999682+00:00
+-->
