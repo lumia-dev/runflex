@@ -1,6 +1,6 @@
 FLEXPART-SERIAL = flexpart.x
 
-NFC = /usr/lib/hpc/gnu13/netcdf-fortran/4.5.3/bin/nc-config
+NFC = /usr/lib/hpc/gnu13/netcdf-fortran/4.5.3/bin/nf-config
 
 FC       = $(shell ${NFC} --fc)
 NCFLAGS  = $(shell ${NFC} --fflags) $(shell ${NFC} --flibs)

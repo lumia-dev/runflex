@@ -34,15 +34,17 @@ module output_mod
 
         ! Loop over the releases:
         do irl = 1, numpoint
-            print*, compoint(irl)
 
             call nf90_err(nf90_def_grp(fid, trim(compoint(irl)), grpid))
 
-            ! Dimension: number of particles in that release
-            call nf90_err(nf90_def_dim(grpid, 'particles', npart(irl), dimid))
-
             filter = npoint == irl
             parts = pack(particles, npoint == irl)
+
+            ! Dimension: number of particles in that release
+            ! Sometimes the number of particles is not exactly as requested (when the release is 
+            ! spread over a time period). Therefore, look for the actual number of particles when
+            ! allocating arrays
+            call nf90_err(nf90_def_dim(grpid, 'particles', size(parts), dimid))
 
             call nf90_err(nf90_def_var(grpid, 'lon', nf90_float, (/dimid/), varid))
             call nf90_err(nf90_put_var(grpid, varid, parts%lon))
@@ -94,7 +96,7 @@ module output_mod
             ! ng90_def_var doesn't seem to support logical arrays directly, so we convert them to integer(1) arrays
             ! the "nf90_byte" type ensures that we get logicals in the file anyway/
 
-            allocate(dummy(10000))
+            allocate(dummy(size(parts)))
             dummy(:) = parts%active
             call nf90_err(nf90_def_var(grpid, 'active', nf90_byte, (/dimid/), varid))
             call nf90_err(nf90_put_var(grpid, varid, dummy))

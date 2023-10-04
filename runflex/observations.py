@@ -123,7 +123,11 @@ class Observations(DataFrame):
         if 'code' not in df:
             df.loc[:, 'code'] = df.loc[:, 'site']
 
-        fields = ['time', 'lat', 'lon', 'alt', 'height', 'code']
+        if 'time_start' not in df and 'time_end' not in df:
+            df.loc[:, 'time_start'] = df.time
+            df.loc[:, 'time_end'] = df.time
+
+        fields = ['time', 'lat', 'lon', 'alt', 'height', 'code', 'time_start', 'time_end']
         if 'kindz' in df.columns:
             fields.append('kindz')
         if 'obsid' in df.columns:

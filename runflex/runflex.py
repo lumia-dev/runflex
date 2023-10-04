@@ -147,7 +147,10 @@ def calc_footprints(conf: DictConfig) -> Union[Observations, QueueManager]:
 
     # Compute the footprints :
     queue = QueueManager(conf, obs, serial=conf.run.get('serial', False))
-    queue.dispatch(maxdt=conf.releases.get('dt_max', '7D'))
+    queue.dispatch(
+        nobsmax=conf.run.obs_per_task,
+        maxdt=conf.releases.get('dt_max', '7D')
+    )
 
     if conf.postprocess.get('lumia', False):
         handle_missing(obs, outpth)
