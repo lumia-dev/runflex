@@ -1,0 +1,91 @@
+laptop :
+  paths : 
+    build : build
+    run : run
+    src : ${runflex:src/flexpart10.4}
+    extras : ${runflex:src/dev}
+    makefile : makefile.ubuntu.gfortran
+    output : output
+    logfile : ${paths.run}/flexpart.out
+    command : ${file:COMMAND}
+    meteo : /scratch/FLEXPART/meteo
+
+donkey :
+  paths :
+    build : /data/users/guillaume/Projects/CoCO2_WP4/flexpart/build
+    run : /data/users/guillaume/Projects/CoCO2_WP4/flexpart/run
+    src : ${runflex:src/flexpart10.4}
+    extras : ${runflex:src/dev}
+    makefile : makefile.opensuse-tumbleweed.gfortran
+    output : /data/users/guillaume/Projects/CoCO2_WP4/flexpart/footprints_v2
+    logfile : ${paths.run}/flexpart.out
+    command : ${runflex:inputs/COMMAND}
+    meteo : /scratch/projects/FLEXPART/meteo/ea/eurocom025x025/
+  ncpus : 16
+  obs_per_task : 500
+
+run :
+  logfile : ${host.paths.logfile}
+  serial : no
+  ncpus : ${host.ncpus}
+  obs_per_task : ${host.obs_per_task}
+
+paths : ${host.paths}
+
+observations :
+  file : ../obspack_co2_466_GLOBALVIEWplus_v8.0_2023-03-30.2018.flexpart_20230627.hdf
+  # coordinates__ :
+  #   htm :
+  #     start : 1 jan 2018
+  #     end : 1 jan 2019
+  #     freq : 3H
+  #     lat : 56.0976
+  #     lon : 13.4189
+  #     alt : 115.0
+  #     height : 150
+  #     code : htm
+  #     range : from 12:00 to 18:00
+
+  release :
+    kindz :
+      threshold : 1000
+
+outgrid :
+  x : [-15, 35, 0.25]    # [lon_min, lon_max, lon_step]
+  y : [33, 73, 0.25]     # [lat_min, lat_max, lat_step]
+  levels : [100]        # Height of the surface layer
+
+releases :
+  length : 14
+  species : 
+    species : AIRTRACER
+    weightmolar : 29
+
+  mass : ${.npart}
+  npart : 10_000
+  dt_max : 180D
+
+meteo :
+  archive : ${rclone:swestore:FLEXPART/meteo/ea.eurocom025x025}
+  prefix : EA
+  interv : 1h
+  logfile : meteo.log
+
+postprocess :
+  lumia : yes
+
+flexpart :
+  npartmax : 5_000_000
+
+command :
+  loutsample : 300 # should be < lsynctime + should be smaller than grid size / ABL wind speed ==> not sure if it makes anything with footprints ...
+  lsynctime : 300
+  ctl : 3
+  ifine : 4
+  cblflag : 0   # should stay at 0
+  lsubgrid : 1
+  lconvection : 1
+  ind_source : 1
+  ind_receptor : 2
+  loutaver : 3600
+  loutstep : 3600

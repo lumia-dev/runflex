@@ -1,0 +1,53 @@
+paths :
+    output : footprints
+    #run : ${tmp:/scratch}
+    run : scratch
+    meteo : /meteo
+    build : flexpart-dev
+    extras : ${prefix:src/dev}
+
+# Output grid (resolution of the footprints).
+outgrid :
+    x : [-15, 35, 0.25]    # [lon_min, lon_max, lon_step]
+    y : [33, 73, 0.25]     # [lat_min, lat_max, lat_step]
+    levels : [100]        # Height of the surface layer
+
+# This should create 13 observations
+observations:
+    file    : ../observations_COCO2_WP4_20221107.hdf
+    start   : 2018-12-1
+    end     : 2019-1-1
+    include : [htm]
+
+# use 2 obs/core
+run :
+    serial : False
+    releases_per_task : 500     # Number of footprints computed by each FLEXPART run
+    ncpus : 32                  # Number of CPUs to use
+
+# Do normal releases (14 days, 10_000 footprints: this is a real test).
+releases :
+    length : 14                 # Max duration of the footprints
+    altitude_correction : 1
+    mass : ${releases.npart}
+    npart : 10000
+    kindz :
+        threshold : 1000
+
+# default settings for meteo
+meteo :
+    archive : ${rclone:swestore:FLEXPART/meteo/ea.eurocom025x025}
+    prefix : EA
+    interv : 1h
+    logfile : meteo.log
+
+# Use "fast" options
+command :
+    ctl : 5
+    ifine : 5
+    loutaver : 3600             # Time step of the footprints
+    loutstep : 3600
+    lagespectra : 1209600       # Max duration of the footprints
+
+# airtracer species
+species : [24]                  # Species number (24 = AIRTRACER)

@@ -1,0 +1,125 @@
+paths :
+    output  : footprints-airtracer
+  run     : /scratch/local/
+  meteo   : /proj/inversion/users/x_guimo/FLEXPART/meteo/
+  build   : flexpart-dev2
+  #build   : /runflex/build/flexpart-dev
+  extras  : ${prefix:src/dev}
+
+outgrid :
+  x : [-15, 35, 0.25]
+  y : [33, 73, 0.25]
+  levels : [100]
+
+observations :
+  coordinates :
+    Hyltemossa :
+      lat : 56.1
+      lon : 13.42
+      height : 115
+      alt : 150
+    "*" :
+      start : 1 january 2018
+      end : 1 january 2019
+      freq : 1H
+      range : from 12:00 to 18:00
+    Norunda : 
+      lat : 60.086441
+      lon : 17.479455 
+      alt : 46 
+      height : 40
+    Neuglobsow : 
+      lat : 53.14
+      lon : 13.03
+      alt : 62
+      height : 4
+    Pallas : 
+      lat : 67.973333333
+      lon : 24.116111111
+      alt : 560.0
+      height : 7
+    Melpitz: 
+      lat : 51.53
+      lon : 12.93
+      alt : 87.0
+      height : 4
+    Hyytiala: 
+      lat : 61.847384
+      lon : 24.29478
+      alt : 181
+      height : 10
+    OPE: 
+      lat : 48.562
+      lon : 5.505
+      alt : 392.0
+      height : 4
+    Ispra : 
+      lat : 45.8
+      lon : 8.633333
+      alt : 209.0
+      height : 9
+    Waldhof : 
+      lat : 52.8
+      lon : 10.77
+      alt : 74.0
+      height : 4
+    Birkenes: 
+      lat : 58.38
+      lon : 8.25
+      alt : 220
+      height : 4
+    Kpuszta: 
+      lat : 46.966667
+      lon : 19.583334
+      alt : 125.0
+      height : 10
+    Cabauw : 
+      lat : 51.970278
+      lon : 4.926389
+      alt : 1
+      height : 5
+  release:
+    altitude_correction : 1
+    kindz :
+      threshold : 1000
+
+run :
+  serial : False
+  releases_per_task : 50
+  ncpus : 32
+
+releases :
+  length  : 14
+  npart   : 10_000
+  mass    : ${releases.npart}
+  species : ${BC}
+
+meteo :
+  archive : ${rclone:swestore:FLEXPART/meteo/ea.eurocom025x025}
+  prefix  : EA
+  interv  : 1h
+  logfile : meteo.log
+
+command :
+  ctl         : -1
+  ifine       : 0
+  loutaver    : 86400
+  loutstep    : ${command.loutaver}
+  lagespectra : 1_209_600
+
+BC :
+  species    : BC
+  crain_aero : 1
+  csnow_aero : 1
+  ccn_aero   : 0.9
+  in_aero    : 0.1
+  density    : 2000.
+  dquer      : 4.e-7
+  dsigma     : 3.3
+
+AIRTRACER :
+  species     : AIRTRACER
+  weightmolar : 29.0
+
+flexpart :
+  npartmax : 50_0000
