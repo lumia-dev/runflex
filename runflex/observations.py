@@ -96,6 +96,8 @@ class Observations(DataFrame):
             if interval is not None:
                 _, tmin, _, tmax = interval.split()
                 df = df.set_index('time').between_time(tmin, tmax).reset_index()
+            df.loc[:, 'time_start'] = df.time
+            df.loc[:, 'time_end'] = df.time
             obs.append(df)
         obs = cls(concat(obs, ignore_index=True))
         obs.loc[:, 'obsid'] = obs.gen_obsid()
@@ -113,7 +115,7 @@ class Observations(DataFrame):
         if fname.endswith('tar.gz') or fname.endswith('tgz'):
             df = read_tgz(fname)
         elif fname.endswith('csv'):
-            df = read_csv(fname)
+            df = read_csv(fname,parse_dates=['time'])
         elif fname.endswith('hdf') or fname.endswith('h5'):
             df = read_hdf(fname)
         else:

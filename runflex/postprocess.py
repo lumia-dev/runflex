@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 from netCDF4 import Dataset, chartostring, Group
 from h5py import File
-from pandas import DataFrame, Timestamp, Timedelta, TimedeltaIndex, DatetimeIndex
+from pandas import DataFrame, Timestamp, Timedelta, TimedeltaIndex, DatetimeIndex, read_csv
 import time
 import os
 from loguru import logger
@@ -51,6 +51,12 @@ class Release:
             ilat=self.grid.lat[sel],
             ilon=self.grid.lon[sel],
             itime=self.grid.time[sel] + self.nshift
+        )
+        
+    @property
+    def trajectory(self) -> SimpleNamespace:
+        return SimpleNamespace(
+            trajdata=self.data,
         )
 
     def __post_init__(self):
@@ -224,6 +230,70 @@ class GridTimeFile:
 
     def __getitem__(self, item):
         return self.ds.__getitem__(item)
+    
+    
+class TrajFile(File):
+    """
+    Refactered code from class LumiaFile to store data from Flexpart Trajectories output in hdf5 files
+    """
+    def __init__(self, *args, origin: Timestamp, count: int = 0, wait: int = 1, **kwargs):
+        # Open the file, but wait for it to be free if it's busy
+        maxcount = 20
+        try:
+            super().__init__(*args, **kwargs)
+        except (OSError, BlockingIOError) as e:
+            if count < maxcount:
+                logger.info(f"Waiting {wait} sec for the access to file {args[0]}")
+                time.sleep(wait)
+                count += 1
+                wait += count
+                self.__init__(*args, origin=origin, count=count, wait=wait, **kwargs)
+            else:
+                logger.error(f"Couldn't open file {args[0]} (File busy?)")
+                raise e
+
+        # Application attributes
+        self.origin = origin
+        self.attrs['origin'] = str(self.origin)
+
+    def add(self, release: Release, header: list[str]) -> None:
+        # Make sure that all data is on the same time coordinates
+        # (only for non empty footprints)
+        release.shift_origin(self.origin)
+
+        # Store attributes:
+        for k, v in release.run_attributes.items():
+            k = f'run_{k}'
+            if k not in self.attrs:
+                self.attrs[k] = v
+            elif v != self.attrs[k]:
+                release.release_attributes[k] = v
+
+        # FLEXPART "species"
+        for k, v in release.specie.items():
+            self.attrs[f'species_{k}'] = v
+
+        # Write the release:
+        # If a release with the same name is present, delete it
+        obsid = release.release_attributes['name']
+        if obsid in self:
+            del self[obsid]
+
+        # Store the release, and split 2d array of data into 1-d array for each variable:
+        gr = self.create_group(obsid)
+        gr['trajdata'] = release.trajectory.trajdata
+        for i, var in enumerate(header):
+            gr[var] = release.trajectory.trajdata[:,i]
+            commit = Repo(runflex.prefix).head.object
+            gr[var].attrs['runflex_version'] = commit.committed_datetime.strftime('%Y.%-m.%-d')
+            gr[var].attrs['runflex_commit'] = f'{commit.hexsha} ({commit.committed_datetime})'
+        for k, v in release.release_attributes.items():
+            if isinstance(v, Timestamp):
+                v = str(v)
+            gr.attrs[f'release_{k}'] = v
+        del gr['trajdata']
+
+        logger.info(f"Added release {obsid} to file {self.filename}")
 
 
 def postprocess_task(task) -> None:
@@ -251,7 +321,54 @@ def postprocess_task(task) -> None:
                         lum.add(gridfile.get(release), bg.groups.get(release, None))
 
             if bgfile.exists():
-                bg.close()
+                bg.close()   
+                
+def postprocess_traj_task(task) -> None:
+    """Postprocess trajectory output from runflex run into hdf5 files, one per month.
+
+    Args:
+        task: task object from task.py
+    """
+    releases = task.releases
+    
+    if task.status in ['success', 'skipped']:
+        
+        releases.loc[:, 'traj_filename'] = 'traj_'+releases.code + releases.height.map('.{:.0f}m.'.format) + releases.time.dt.strftime('%Y-%m.hdf')
+        
+        #Open gridfiles to extraxt metadata
+        with GridTimeFile(task.end.strftime(os.path.join(task.rundir, 'grid_time_%Y%m%d%H%M%S.nc')), 'r') as gridfile:
+            
+            header = ['release_num', 'time', 'lon', 'lat','zcenter', 'topocenter', 'hmixcenter', 'tropocenter', 'pvcenter', 'rmsdist', 'rms', 'zrmsdist', 'zrms', 'hmixfract', 'pvfract', 'tropofract']+['xclust_1','yclust_1','zclust_1','fclust_1','rmsclust_1','xclust_2','yclust_2','zclust_2','fclust_2','rmsclust_2','xclust_3','yclust_3','zclust_3','fclust_3','rmsclust_3','xclust_4','yclust_4','zclust_4','fclust_4','rmsclust_4','xclust_5','yclust_5','zclust_5','fclust_5','rmsclust_5']
+            
+            #Read and format trajectories, and extract relevant info from top of file
+            trajs = read_csv(
+                task.end.strftime(os.path.join(task.rundir, 'trajectories.txt')),
+                delim_whitespace=True,
+                names=header
+                )
+            
+            num_releasepoint = int(trajs['release_num'].loc[2])
+            release_map = {}
+            for i in range(num_releasepoint):
+                release_map[trajs['release_num'].loc[2*i+4]] = i+1
+                
+            trajs = trajs.dropna().astype('float').astype({'release_num':'int'})
+
+            #Iterate over the trajs files (i.e. destination)
+            for file in releases.drop_duplicates(subset=['traj_filename']).loc[:, ['traj_filename', 'time']].itertuples():
+                
+                #Open the file
+                origin = Timestamp(file.time.strftime('%Y-%m'))
+                with TrajFile(os.path.join(checkpath(task.rcf.paths.output), file.traj_filename), origin=origin, mode='a') as trajfile:
+                    
+                        #Iterate over releases that should go into that traj file
+                        for release in releases.loc[releases.traj_filename == file.traj_filename].obsid:
+                            
+                            #get relevant trajdata, and metadata from gribfile
+                            data = trajs.loc[trajs['release_num']==release_map[release]].drop('release_num',axis=1)
+                            rel = gridfile.get(release)
+                            rel.data = data.to_numpy()
+                            trajfile.add(rel, header=list(data.columns))
 
 
 if __name__ == '__main__':

@@ -8,7 +8,7 @@ from runflex.utilities import checkpath
 from runflex.meteo import Meteo
 from runflex.releases import Releases
 from runflex.compile import Flexpart
-from runflex.postprocess import postprocess_task
+from runflex.postprocess import postprocess_task, postprocess_traj_task
 import os
 import shutil
 from loguru import logger
@@ -240,7 +240,13 @@ class Task:
 
         if self.rcf.postprocess.get('lumia', False):
             postprocess_task(self)
-
+        
+        if self.rcf.postprocess.get('traj', False):
+            if self.rcf.command.get('iout', False) == 13:
+                postprocess_traj_task(self)
+            else:
+                logger.warning('Cannot postprocess trajectories (no output). Set iout to 13.')
+        
         return self
 
     def runflexpart(self, stdout) -> str:
