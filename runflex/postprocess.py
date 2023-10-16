@@ -282,11 +282,17 @@ class TrajFile(File):
         # Store the release, and split 2d array of data into 1-d array for each variable:
         gr = self.create_group(obsid)
         gr['trajdata'] = release.trajectory.trajdata
-        for i, var in enumerate(header):
-            gr[var] = release.trajectory.trajdata[:,i]
-            commit = Repo(runflex.prefix).head.object
-            gr[var].attrs['runflex_version'] = commit.committed_datetime.strftime('%Y.%-m.%-d')
-            gr[var].attrs['runflex_commit'] = f'{commit.hexsha} ({commit.committed_datetime})'
+        gr['mean_traj'] = release.trajectory.trajdata[:,:15]
+        gr['mean_traj'].attrs['header'] = header[:15]
+        commit = Repo(runflex.prefix).head.object
+        gr['mean_traj'].attrs['runflex_version'] = commit.committed_datetime.strftime('%Y.%-m.%-d')
+        gr['mean_traj'].attrs['runflex_commit'] = f'{commit.hexsha} ({commit.committed_datetime})'
+        
+        nclust = 5
+        for n in range(nclust):
+            gr[f'clust_{n+1}'] = release.trajectory.trajdata[:,15+5*n:15+5*(n+1)]
+            gr[f'clust_{n+1}'].attrs['header'] = header[15+5*n:15+5*(n+1)]
+            
         for k, v in release.release_attributes.items():
             if isinstance(v, Timestamp):
                 v = str(v)

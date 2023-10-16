@@ -1,7 +1,7 @@
 FLEXPART-SERIAL = flexpart.x
 
 NCFLAGS  = $(shell nf-config --fflags) $(shell nf-config --flibs) -DUSE_NCF
-ECFLAGS  = -I/usr/inlcude -leccodes_f90
+ECFLAGS  = -leccodes_f90
 FFLAGS   = -O2 -m64 -cpp -mcmodel=medium -fconvert=little-endian -ffree-line-length-none -frecord-marker=4 -fbounds-check -I/usr/local/include ${NCFLAGS} ${ECFLAGS}
 LIBS = -leccodes_f90 -leccodes -lm -lnetcdff
 
