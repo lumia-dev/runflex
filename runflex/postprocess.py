@@ -287,7 +287,7 @@ class TrajFile(File):
         commit = Repo(runflex.prefix).head.object
         gr['mean_traj'].attrs['runflex_version'] = commit.committed_datetime.strftime('%Y.%-m.%-d')
         gr['mean_traj'].attrs['runflex_commit'] = f'{commit.hexsha} ({commit.committed_datetime})'
-        
+        gr['time'] = release.trajectory.trajdata[:,0]
         nclust = 5
         for n in range(nclust):
             gr[f'clust_{n+1}'] = release.trajectory.trajdata[:,15+5*n:15+5*(n+1)]
