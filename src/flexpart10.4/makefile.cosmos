@@ -1,0 +1,16 @@
+FLEXPART-SERIAL = flexpart.x
+
+ECFLAGS = -O2 -L/sw/easybuild_milan/software/netCDF-Fortran/4.5.3-gompi-2021a/lib -lnetcdff -lnetcdf -DUSE_NCF -L/sw/easybuild_milan/software/ecCodes/2.22.1-gompi-2021a/lib -leccodes_f90 -Wl, -R/sw/easybuild_milan/software/ecCodes/2.22.1-gompi-2021a/lib -Wl,-R/sw/easybuild_milan/software/netCDF-Fortran/4.5.3-gompi-2021a/lib/
+FFLAGS   = -O2 -g -cpp -m64 -mcmodel=medium -fconvert=little-endian -ffree-line-length-none -frecord-marker=4 -fbounds-check -DUSE_NCF -I/sw/easybuild_milan/software/netCDF-Fortran/4.5.3-gompi-2021a/include -I/sw/easybuild_milan/software/netCDF/4.8.0-gompi-2021a/include -DgFortran -I/sw/easybuild_milan/software/ecCodes/2.22.1-gompi-2021a/include
+LIBS = -leccodes_f90 -leccodes -lm -lnetcdff
+
+include dependencies
+
+%.o: %.f90
+	mpifort -c $(FFLAGS) $<
+
+clean:
+	\rm -f *.o *.mod
+
+depend dependencies:
+	makedepf90 -o flexpart.x *.f90 > dependencies
