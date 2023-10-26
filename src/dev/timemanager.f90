@@ -497,7 +497,7 @@ subroutine timemanager(metdata_format)
                         ! Terminate trajectories that are older than maximum allowed age
                         !***************************************************************
 
-                        if (pp%t - itramem(j) >= lage(nageclass)) then
+                        if (abs(pp%t - itramem(j)).ge.lage(nageclass)) then
                             if (linit_cond >= 1) call initial_cond_calc(itime + lsynctime, j)
                             pp%active = .false.
                         endif
