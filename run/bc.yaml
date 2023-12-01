@@ -105,7 +105,10 @@ command :
   ifine       : 0
   loutaver    : 86400
   loutstep    : ${command.loutaver}
-  lagespectra : 1_209_600
+  lagespectra : 1
+
+ageclasses :
+  lage : 1_209_600
 
 BC :
   species    : BC
@@ -123,3 +126,7 @@ AIRTRACER :
 
 flexpart :
   npartmax : 50_0000
+
+postprocess :
+  lumia : yes
+  traj : no #If traj is yes, then iout: 13 has to be under command
