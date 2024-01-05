@@ -12,9 +12,10 @@ module settings
     integer :: maxpart
 
     type settings_dict
-        logical         :: userc=.false.   ! default is still to not use a rcfile
-        logical         :: blh=.false.     ! default is not to compute blh
-        logical         :: transport=.true.! transport of particles can be disabled if we only want to compute blh
+        logical         :: userc=.false.            ! default is still to not use a rcfile
+        logical         :: blh=.false.              ! default is not to compute blh
+        logical         :: transport=.true.         ! transport of particles can be disabled if we only want to compute blh
+        logical         :: suppressUndefWarn=.false.! default is not to suppress undefined grib2 message found warning
         type(datetime)  :: start, end
         integer         :: maxpart
     end type settings_dict
@@ -35,6 +36,7 @@ module settings
                 call readrc(rcf, 'compute_blh', config%blh, status, default=config%blh)
                 call readrc(rcf, 'compute_transport', config%transport, status, default=config%transport)
                 call readrc(rcf, 'npartmax', config%maxpart, status)
+                call readrc(rcf, 'suppress_undefMessageWarn', config%suppressUndefWarn, status, default=config%suppressUndefWarn)
             end if
 
             call Done(rcf, status)

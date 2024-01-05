@@ -55,11 +55,11 @@ subroutine clustering(xl,yl,zl,n,xclust,yclust,zclust,fclust,rms, &
   !*****************************************************************************
 
   use par_mod
-  use settings, only : maxpart
+  use settings, only : config
 
   implicit none
 
-  integer :: n,i,j,l,nclust(maxpart),numb(ncluster),ncl
+  integer :: n,i,j,l,nclust(config%maxpart),numb(ncluster),ncl
   real :: xl(n),yl(n),zl(n),xclust(ncluster),yclust(ncluster),x,y,z
   real :: zclust(ncluster),distance2,distances,distancemin,rms,rmsold
   real :: xav(ncluster),yav(ncluster),zav(ncluster),fclust(ncluster)

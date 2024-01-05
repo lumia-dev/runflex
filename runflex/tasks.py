@@ -8,14 +8,14 @@ from runflex.utilities import checkpath
 from runflex.meteo import Meteo
 from runflex.releases import Releases
 from runflex.compile import Flexpart
-from runflex.postprocess import postprocess_task
+from runflex.postprocess import postprocess_task, postprocess_traj_task
 import os
 import shutil
 from loguru import logger
 from dataclasses import dataclass
 from typing import Union
 from pathlib import Path
-from runflex.files import Command, Outgrid, Species
+from runflex.files import Command, Outgrid, Species, Ageclasses
 from runflex.utilities import getfile
 from multiprocessing import RLock
 
@@ -102,6 +102,15 @@ class Task:
         return command
 
     @property
+    def ageclasses(self) -> Ageclasses:
+        ageclasses = Ageclasses.read(self.rcf.paths.ageclasses)
+        if 'ageclasses' in self.rcf:
+            ageclasses.update(self.rcf.ageclasses)
+        if ageclasses.NAGECLASS > 1:
+            raise NotImplementedError('More than 1 ageclass not implemented in runflex')
+        return ageclasses
+    
+    @property
     def outgrid(self) -> Outgrid:
 
         x0, x1, dx = self.rcf.outgrid.x
@@ -186,6 +195,10 @@ class Task:
         # COMMAND file
         self.command.write(os.path.join(self.rundir, 'COMMAND'), name='COMMAND')
 
+        # AGECLASSES file
+        if self.command.LAGESPECTRA == 1:
+            self.ageclasses.write(os.path.join(self.rundir, 'AGECLASSES'), name='AGECLASS')
+
         # SPECIES
         self.setup_species()
 
@@ -240,7 +253,13 @@ class Task:
 
         if self.rcf.postprocess.get('lumia', False):
             postprocess_task(self)
-
+        
+        if self.rcf.postprocess.get('traj', False):
+            if self.rcf.command.get('iout', False) == 13:
+                postprocess_traj_task(self)
+            else:
+                logger.warning('Cannot postprocess trajectories (no output). Set iout to 13.')
+        
         return self
 
     def runflexpart(self, stdout) -> str:

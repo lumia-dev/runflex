@@ -261,3 +261,8 @@ class Species(Namelist):
     ohdconst: FormattedString('8.2f') = -9.9e-9
     ohnconst: FormattedString('8.2f') = 2.0
     weightmolar: FormattedString('18.2f') = -999.9
+
+@dataclass
+class Ageclasses(Namelist):
+    NAGECLASS: int = 1
+    LAGE: int = 1728000

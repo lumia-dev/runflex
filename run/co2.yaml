@@ -47,7 +47,10 @@ command :
     ifine : 5
     loutaver : 3600             # Time step of the footprints
     loutstep : 3600
-    lagespectra : 1209600       # Max duration of the footprints
+    lagespectra : 1     
+
+ageclasses :
+    lage : 1_209_600 # Max duration of the footprints
 
 # airtracer species
 species : [24]                  # Species number (24 = AIRTRACER)
