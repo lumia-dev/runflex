@@ -111,7 +111,7 @@ def load_obs(conf: DictConfig) -> Observations:
                 obs.loc[obs.code.isin(kindz[2]), 'kindz'] = 2
 
     # Setup release height:
-    if 'release_heigh' not in obs:
+    if 'release_height' not in obs:
         obs.loc[obs.kindz == 1, 'release_height'] = obs.height.loc[obs.kindz == 1]
         alt_corr = conf.observations.get('altitude_correction', 1)
         obs.loc[obs.kindz == 2, 'release_height'] = (obs.height + alt_corr * (obs.alt - obs.height)).loc[obs.kindz == 2]

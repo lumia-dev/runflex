@@ -13,7 +13,7 @@ module particles_mod
         integer          :: release ! release point of the particle (npoint)
         logical          :: active
         logical          :: free
-        real, dimension(:), allocatable :: mass
+        ! real, dimension(:), allocatable :: mass
 
         ! pointers (temporary ...)
         ! real, pointer             :: height
@@ -32,6 +32,7 @@ module particles_mod
         real             :: pressure
         real             :: pbl_height
         real             :: tropopause_height
+        real             :: mass
 
         ! Methods
         contains
@@ -86,7 +87,7 @@ module particles_mod
 
 
     subroutine update_variables(itime)
-        use com_mod, only : xlon0, dx, ylat0, dy, xtra1, ytra1, numpart, ztra1
+        use com_mod, only : xlon0, dx, ylat0, dy, xtra1, ytra1, numpart, ztra1, xmass1
 
         integer, intent(in) :: itime
         integer             :: ipart
@@ -100,6 +101,7 @@ module particles_mod
                 pp%x = xtra1(ipart)
                 pp%y = ytra1(ipart)
                 pp%z = ztra1(ipart)
+                pp%mass = xmass1(ipart,1)
                 call pp%update(itime)
             end if
             nullify(pp)
