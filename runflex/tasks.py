@@ -91,8 +91,11 @@ class Task:
             logger.error("LOUTAVER longer than 24 hours is not implemented in runflex (but it should be doable)")
             raise NotImplementedError
 
+        # Added timedelta to end time (simulation start, so first release also starts at zero ) - aka spinup
+        spinup = Timedelta(seconds=self.rcf.run.get('spinup', 0))
+        print(spinup)
         self.start = start
-        self.end = end
+        self.end = end+spinup
 
         command.IBDATE = self.start
         command.IBTIME = self.start
@@ -107,7 +110,8 @@ class Task:
         if 'ageclasses' in self.rcf:
             ageclasses.update(self.rcf.ageclasses)
         if ageclasses.NAGECLASS > 1:
-            raise NotImplementedError('More than 1 ageclass not implemented in runflex')
+            logger.error('More than 1 ageclass not implemented in runflex')
+            raise NotImplementedError
         return ageclasses
     
     @property
@@ -150,7 +154,9 @@ class Task:
                 task_id=self.jobid,
                 logfile=logfile
             )
-            meteo.check_unmigrate(self.start, self.end)
+            
+            if type(meteo.archive) is not str:
+                meteo.check_unmigrate(self.start, self.end)
             meteo.write_AVAILABLE(os.path.join(self.rundir, 'AVAILABLE'))
             if self.rcf.meteo.get('cleanup', False):
                 meteo.cleanup(threshold=self.rcf.meteo.cleanup.threshold, nfilesmin=self.rcf.meteo.cleanup.nfilesmin)
@@ -228,8 +234,12 @@ class Task:
         # Do not run the task if a "flexpart.ok" file has been found in the output folder (avoid overwriting existing data).
         if self.completed:
             logger.info(f'Found okfile at {self.okfile}, returning ...')
-            self.status = 'skipped'
-            return self
+            if not self.rcf.run.get('overwrite', False):
+                self.status = 'skipped'
+                return self
+            else:
+                logger.info(f'Overwrites existing data')
+                os.remove(self.okfile)
 
         # Setup the task
         self.setup()
