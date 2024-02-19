@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 from netCDF4 import Dataset, chartostring, Group
 from h5py import File
-from pandas import DataFrame, Timestamp, Timedelta, TimedeltaIndex, DatetimeIndex, read_csv
+from pandas import DataFrame, Timestamp, Timedelta, TimedeltaIndex, DatetimeIndex, read_csv, to_timedelta, concat
 import time
 import os
 from loguru import logger
@@ -9,7 +9,7 @@ from dataclasses import dataclass, field
 from numpy.typing import NDArray
 from typing import Union
 from types import SimpleNamespace
-from numpy import nonzero, meshgrid, array, int16, array_equal
+from numpy import nonzero, meshgrid, array, int16, array_equal, unique
 import runflex
 from runflex.utilities import checkpath
 from git import Repo
@@ -256,7 +256,7 @@ class TrajFile(File):
         self.origin = origin
         self.attrs['origin'] = str(self.origin)
 
-    def add(self, release: Release, header: list[str]) -> None:
+    def add(self, release: Release, header: list[str], nr_height_levels: int) -> None:
         # Make sure that all data is on the same time coordinates
         # (only for non empty footprints)
         release.shift_origin(self.origin)
@@ -282,25 +282,82 @@ class TrajFile(File):
         # Store the release, and split 2d array of data into 1-d array for each variable:
         gr = self.create_group(obsid)
         gr['trajdata'] = release.trajectory.trajdata
-        gr['mean_traj'] = release.trajectory.trajdata[:,:15]
-        gr['mean_traj'].attrs['header'] = header[:15]
         commit = Repo(runflex.prefix).head.object
-        gr['mean_traj'].attrs['runflex_version'] = commit.committed_datetime.strftime('%Y.%-m.%-d')
-        gr['mean_traj'].attrs['runflex_commit'] = f'{commit.hexsha} ({commit.committed_datetime})'
-        gr['time'] = release.trajectory.trajdata[:,0]
-        nclust = 5
-        for n in range(nclust):
-            gr[f'clust_{n+1}'] = release.trajectory.trajdata[:,15+5*n:15+5*(n+1)]
-            gr[f'clust_{n+1}'].attrs['header'] = header[15+5*n:15+5*(n+1)]
+        header_unique = unique(array([col.split('_')[0] for col in header]))
+        
+        #Add each variable to the file
+        for col in header_unique:
+
+            #Locate idx of multi dimensional variables (i.e. with 'name_' )
+            idx = [i for i, s in enumerate(header) if col+'_' in s]
             
+            #If no multi dimens vars, find idx of col
+            if len(idx) == 0:
+                idx = header.index(col)
+            
+            gr[col] = release.trajectory.trajdata[:,idx]
+            
+            # Set dimension labels
+            # WARNING: 
+            gr[col].dims[0].label = 'time'
+            if type(idx) == list:
+                if len(idx) == 5:
+                    gr[col].dims[1].label = 'clusters'
+                elif len(idx) == nr_height_levels:
+                    gr[col].dims[1].label = 'height'
+            
+                
+        # Write metadata    
         for k, v in release.release_attributes.items():
             if isinstance(v, Timestamp):
                 v = str(v)
             gr.attrs[f'release_{k}'] = v
+        gr.attrs['runflex_version'] = commit.committed_datetime.strftime('%Y.%-m.%-d')
+        gr.attrs['runflex_commit'] = f'{commit.hexsha} ({commit.committed_datetime})'
+        
         del gr['trajdata']
 
         logger.info(f"Added release {obsid} to file {self.filename}")
+        
+    def save_csv(self, filepath, header, ind_clust: bool = False) -> None:
+            
+        dfs={}
+        for release in list(self.keys()):
+            #Get relevant attributes
+            release_start = Timestamp(self[release].attrs.get('release_start'))
+            time = self[release]['time'][:]
+            if ind_clust:
+                vars = [var for var in self[release].keys() if 'clust' in var]
+            else:
+                vars = [var for var in self[release].keys() if 'clust' not in var]
+            
+            #Loop over vars vector
+            dfs_temp = {}
+            for n, var in enumerate(vars):
+                #Create dataframe, add startpoint if necessary
+                
+                var_header = [col for col in header if var+'_' in col]
+                if len(var_header) == 0:
+                    var_header = [var]
+                
+                data = DataFrame(self[release][var][:], columns=var_header)
 
+                #Add time col if not there
+                if 'time' not in data.columns:
+                    data.insert(0, 'time', time)
+
+                #Format timevector
+                dt = to_timedelta(data['time'],'s')   
+                data['time']=release_start+dt
+
+                dfs_temp[var]=data.set_index('time',drop=True)
+
+                dfs[release_start]=concat(dfs_temp,axis=1).droplevel(0,axis=1)
+           
+        df = concat(dfs,  names=['release_start','time'])
+        
+        df.to_csv(filepath, sep=',')
+        
 
 def postprocess_task(task) -> None:
     releases = task.releases
@@ -329,6 +386,7 @@ def postprocess_task(task) -> None:
             if bgfile.exists():
                 bg.close()   
                 
+                
 def postprocess_traj_task(task) -> None:
     """Postprocess trajectory output from runflex run into hdf5 files, one per month.
 
@@ -344,14 +402,17 @@ def postprocess_traj_task(task) -> None:
         #Open gridfiles to extraxt metadata
         with GridTimeFile(task.end.strftime(os.path.join(task.rundir, 'grid_time_%Y%m%d%H%M%S.nc')), 'r') as gridfile:
             
-            header = ['release_num', 'time', 'lon', 'lat','zcenter', 'topocenter', 'hmixcenter', 'tropocenter', 'pvcenter', 'rmsdist', 'rms', 'zrmsdist', 'zrms', 'hmixfract', 'pvfract', 'tropofract']+['xclust_1','yclust_1','zclust_1','fclust_1','rmsclust_1','xclust_2','yclust_2','zclust_2','fclust_2','rmsclust_2','xclust_3','yclust_3','zclust_3','fclust_3','rmsclust_3','xclust_4','yclust_4','zclust_4','fclust_4','rmsclust_4','xclust_5','yclust_5','zclust_5','fclust_5','rmsclust_5']
+            header_mean = ['release_num', 'time', 'lon', 'lat','zcenter', 'topocenter', 'hmixcenter', 'tropocenter', 'pvcenter', 'rmsdist', 'rms', 'zrmsdist', 'zrms', 'hmixfract', 'pvfract', 'tropofract']
+            
+            header_ind_clust = ['xclust_1','yclust_1','zclust_1','fclust_1','rmsclust_1','xclust_2','yclust_2','zclust_2','fclust_2','rmsclust_2','xclust_3','yclust_3','zclust_3','fclust_3','rmsclust_3','xclust_4','yclust_4','zclust_4','fclust_4','rmsclust_4','xclust_5','yclust_5','zclust_5','fclust_5','rmsclust_5']
             
             #Read and format trajectories, and extract relevant info from top of file
             trajs = read_csv(
                 task.end.strftime(os.path.join(task.rundir, 'trajectories.txt')),
                 delim_whitespace=True,
-                names=header
+                names=header_mean+header_ind_clust
                 )
+            
             
             num_releasepoint = int(trajs['release_num'].loc[2])
             release_map = {}
@@ -359,6 +420,33 @@ def postprocess_traj_task(task) -> None:
                 release_map[trajs['release_num'].loc[2*i+4]] = i+1
                 
             trajs = trajs.dropna().astype('float').astype({'release_num':'int'})
+            
+            #Add meteo along trajectories
+            header_meteo_single_level = ['release_num','time','t2m','td2m','rh2m','ustar','wstar','hmix','sshf','lsprec','convprec','ssr','u10m','v10m','ws10m','ps','pmsl','oli','topo']
+            
+            #Read first row of trajectories 
+            nr_height_levels_meteo = read_csv(
+                task.end.strftime(os.path.join(task.rundir, 'trajectories_meteo.txt')),
+                nrows=1,header=None)[0][0]
+            
+            var_meteo_levels = ['height','tt','prs','qv','uu','vv','clwc','rh']
+
+            # Format full header for meteo
+            header_meteo_levels = []
+            for var in var_meteo_levels:
+                for lvl in range(nr_height_levels_meteo): 
+                    header_meteo_levels.append(f'{var}_{lvl}')
+                    
+            header_meteo = header_meteo_single_level+header_meteo_levels
+            
+            trajs_meteo = read_csv(
+                task.end.strftime(os.path.join(task.rundir, 'trajectories_meteo.txt')),
+                delim_whitespace=True,
+                names=header_meteo,
+                skiprows=1
+                )
+            
+            trajs = trajs.merge(trajs_meteo)
 
             #Iterate over the trajs files (i.e. destination)
             for file in releases.drop_duplicates(subset=['traj_filename']).loc[:, ['traj_filename', 'time']].itertuples():
@@ -367,14 +455,17 @@ def postprocess_traj_task(task) -> None:
                 origin = Timestamp(file.time.strftime('%Y-%m'))
                 with TrajFile(os.path.join(checkpath(task.rcf.paths.output), file.traj_filename), origin=origin, mode='a') as trajfile:
                     
-                        #Iterate over releases that should go into that traj file
-                        for release in releases.loc[releases.traj_filename == file.traj_filename].obsid:
+                    #Iterate over releases that should go into that traj file
+                    for release in releases.loc[releases.traj_filename == file.traj_filename].obsid:
+                        
+                        #get relevant trajdata, and metadata from gribfile
+                        data = trajs.loc[trajs['release_num']==release_map[release]].drop('release_num',axis=1)
+                        rel = gridfile.get(release)
+                        rel.data = data.to_numpy()
+                        trajfile.add(rel, header=list(data.columns), nr_height_levels=nr_height_levels_meteo)
                             
-                            #get relevant trajdata, and metadata from gribfile
-                            data = trajs.loc[trajs['release_num']==release_map[release]].drop('release_num',axis=1)
-                            rel = gridfile.get(release)
-                            rel.data = data.to_numpy()
-                            trajfile.add(rel, header=list(data.columns))
+                    trajfile.save_csv(os.path.join(checkpath(task.rcf.paths.output), file.traj_filename.split('.hdf')[0]+'.csv'), header=list(data.columns))    
+                    trajfile.save_csv(os.path.join(checkpath(task.rcf.paths.output), file.traj_filename.split('.hdf')[0]+'.ind_clusts.csv'), header=list(data.columns), ind_clust=True)                     
 
 
 if __name__ == '__main__':

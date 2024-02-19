@@ -152,12 +152,12 @@ module par_mod
 ! integer,parameter :: nxmax=361,nymax=181,nuvzmax=92,nwzmax=92,nzmax=92,nxshift=359 ! 1.0 degree 92 level
 !  integer,parameter :: nxmax=361,nymax=181,nuvzmax=138,nwzmax=138,nzmax=138,nxshift=0 ! 1.0 degree 138 level
 !   integer,parameter :: nxmax=361,nymax=181,nuvzmax=138,nwzmax=138,nzmax=138,nxshift=359 ! 1.0 degree 138 level
-! integer,parameter :: nxmax=721,nymax=361,nuvzmax=138,nwzmax=138,nzmax=138,nxshift=359  ! 0.5 degree 138 level
+   integer,parameter :: nxmax=721,nymax=361,nuvzmax=138,nwzmax=138,nzmax=138,nxshift=0  ! 0.5 degree 138 level - for oden
 !  integer,parameter :: nxmax=181,nymax=91,nuvzmax=92,nwzmax=92,nzmax=92,nxshift=0  ! CERA 2.0 degree 92 level
 
 ! GFS
-   integer,parameter :: nxmax=340,nymax=262,nuvzmax=138,nwzmax=138,nzmax=138
-   integer :: nxshift=0 ! shift not fixed for the executable 
+  ! integer,parameter :: nxmax=340,nymax=262,nuvzmax=138,nwzmax=138,nzmax=138
+  ! integer :: nxshift=0 ! shift not fixed for the executable 
 
 
   !*********************************************
@@ -276,6 +276,9 @@ module par_mod
   !*****************************************************
 
   integer,parameter :: ncluster=5
+  ! How many levels to save meteo on
+  integer,parameter :: nzmeteo=38
+
 
   !************************************
   ! Unit numbers for input/output files
@@ -294,6 +297,8 @@ module par_mod
   integer,parameter :: unittmp=101
 ! RLT
   integer,parameter :: unitoutfactor=102
+  integer,parameter :: unitouttrajmeteo=103
+
 
 !******************************************************
 ! integer code for missing values, used in wet scavenging (PS, 2012)
