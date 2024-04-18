@@ -91,7 +91,7 @@ class Observations(DataFrame):
             df.loc[:, 'lon'] = conf[site]['lon']
             df.loc[:, 'alt'] = conf[site]['alt']
             df.loc[:, 'height'] = conf[site]['height']
-            df.loc[:, 'code'] = conf[site].get('code', site)
+            df.loc[:, 'code'] = conf[site].get('code', site) #Kristian april 2024: add levels and weights here preliminary
             interval = conf[site].get('range', defaults.get('range'))
             if interval is not None:
                 _, tmin, _, tmax = interval.split()

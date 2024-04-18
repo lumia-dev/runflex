@@ -18,7 +18,7 @@ class Releases(DataFrame):
                 IDATE2=obs.time_end, ITIME2=obs.time_end,
                 LAT1=obs.lat, LON1=obs.lon, Z1=obs.release_height,
                 ZKIND=obs.kindz, MASS=obs.mass, PARTS=obs.npart,
-                COMMENT=obs.obsid
+                COMMENT=obs.obsid #Kristian april 2024: add ZZ and zweight here so they are added to the release files upon compiling
             )
 
     def write(self, filename: str):

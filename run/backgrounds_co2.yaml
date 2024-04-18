@@ -58,6 +58,9 @@ observations :
       lon : 13.42
       height : 115
       alt : 150
+      #Kristian april 2024:
+      #Ak_levels : start by making som manual levels here
+      #AkPW : and weights here
     "*" :
       start : 1 february 2018
       end : 3 february 2018
