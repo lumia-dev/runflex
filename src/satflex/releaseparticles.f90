@@ -151,6 +151,8 @@ subroutine releaseparticles(itime)
             yaux=ypoint2(i)-ypoint1(i)
             zaux=zpoint2(i)-zpoint1(i)
             do j=1,numrel                       ! loop over particles to be released this time
+                !Kristian April 2024: 
+                !these changes makes the loop consider the different release levels:
                 cur_lev=1
                 weights=zweights(i,:)
                 do ipart = minpart, config%maxpart          ! search for free storage space
@@ -159,8 +161,11 @@ subroutine releaseparticles(itime)
                     !*****************************************************************************
 
                     pp => particles(ipart)
-
+                    !Kristian April 18 2024: the following line is something we might 
+                    !need to convert from pressure to elevation
                     !pressure_col = pp%interp_lon_lat_time(prs)
+
+                    !Kristian April 2024:
                     if ((ipart/numrel)>sum(weights(1:cur_lev))) then
                         cur_lev=cur_lev+1 
                     endif
@@ -224,7 +229,7 @@ subroutine releaseparticles(itime)
 
                         !ztra1(ipart)=zpoint1(i)+ran1(idummy)*zaux
                         !Kristian April 18: zzpoint should ideally be changed at a later stage to 
-                        !zzpoint changed from 
+                        !zzpoint changed from pressures to elevations
                         ztra1(ipart)=zzpoint(i,cur_lev)
                         ! Interpolation of topography and density
                         !****************************************
