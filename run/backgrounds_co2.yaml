@@ -12,15 +12,15 @@ laptop :
 
 donkey :
   paths :
-    build : /data/users/guillaume/Projects/CoCO2_WP4/flexpart/build
-    run : /data/users/guillaume/Projects/CoCO2_WP4/flexpart/run
+    build : /data/users/Kristian/flexpart/build
+    run : /data/users/Kristian/run
     src : ${runflex:src/flexpart10.4}
-    extras : ${runflex:src/dev}
+    extras : ${runflex:src/satflex} #use satflex
     makefile : makefile.opensuse-tumbleweed.gfortran
-    output : /data/users/guillaume/Projects/CoCO2_WP4/flexpart/footprints_v2
+    output : /data/users/Kristian/output
     logfile : ${paths.run}/flexpart.out
     command : ${runflex:inputs/COMMAND}
-    meteo : /scratch/projects/FLEXPART/meteo/ea/eurocom025x025/
+    meteo : /data/users/Kristian/meteo
   ncpus : 16
   obs_per_task : 500
 
@@ -32,20 +32,38 @@ run :
 
 paths : ${host.paths}
 
-observations :
-  file : ../obspack_co2_466_GLOBALVIEWplus_v8.0_2023-03-30.2018.flexpart_20230627.hdf
-  # coordinates__ :
-  #   htm :
-  #     start : 1 jan 2018
-  #     end : 1 jan 2019
-  #     freq : 3H
-  #     lat : 56.0976
-  #     lon : 13.4189
-  #     alt : 115.0
-  #     height : 150
-  #     code : htm
-  #     range : from 12:00 to 18:00
+# observations :
+#   file : ../obspack_co2_466_GLOBALVIEWplus_v8.0_2023-03-30.2018.flexpart_20230627.hdf
+#   # coordinates__ :
+#   #   htm :
+#   #     start : 1 jan 2018
+#   #     end : 1 jan 2019
+#   #     freq : 3H
+#   #     lat : 56.0976
+#   #     lon : 13.4189
+#   #     alt : 115.0
+#   #     height : 150
+#   #     code : htm
+#   #     range : from 12:00 to 18:00
 
+#   release :
+#     kindz :
+#       threshold : 1000
+
+
+observations :
+  coordinates :
+    Hyltemossa :
+      lat : 56.1
+      lon : 13.42
+      height : 115
+      alt : 150
+    "*" :
+      start : 1 february 2018
+      end : 3 february 2018
+      freq : 1H
+      range : from 12:00 to 18:00
+      
   release :
     kindz :
       threshold : 1000
