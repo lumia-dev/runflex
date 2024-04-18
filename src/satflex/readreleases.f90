@@ -93,11 +93,12 @@ subroutine readreleases
   integer,parameter :: unitreleasesout=2
   real,allocatable, dimension (:) :: mass
   integer,allocatable, dimension (:) :: specnum_rel,specnum_rel2
+  !the following two parameters added by Kristian april 2024:
   integer, parameter :: nlev_ak=3
   real, dimension (nlev_ak) :: zz,zweight
 
 
-  !Kristian April 18 2024:dimension of nlev_ak is set to three, because we only have 3 level atm.
+  !Kristian April 18 2024:dimension of nlev_ak is set to three, because we only have 3 level at the moment.
 
   ! declare namelists
   namelist /releases_ctrl/ &
@@ -261,7 +262,7 @@ subroutine readreleases
   if (stat.ne.0) write(*,*)'ERROR: could not allocate zpoint1'
   allocate(zpoint2(numpoint),stat=stat)
   if (stat.ne.0) write(*,*)'ERROR: could not allocate zpoint2'
-  !Kristian April 18 2024: Added zzpoint and zweight
+  !Kristian April 2024: Added zzpoint and zweight
   allocate(zzpoint(numpoint,nlev_ak), stat=stat)
   if (stat.ne.0) write(*,*)'ERROR: could not allocate zzpoint'
   allocate(zweight(numpoint,nlev_ak), stat=stat)
