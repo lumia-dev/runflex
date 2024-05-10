@@ -79,10 +79,12 @@ class Observations(DataFrame):
         default_key = '*'
         defaults = conf.get(default_key, {})
         for site in [_ for _ in conf.keys() if _ != default_key]:
-            df = DataFrame(columns=['time', 'lat', 'lon', 'alt', 'height', 'code'])
+            df = DataFrame(columns=['time', 'lat', 'lon', 'alt', 'height', 'code', 'levels', 'weights'])
             start = conf[site].get('start', defaults.get('start'))
             end = conf[site].get('end', defaults.get('end'))
             freq = conf[site].get('freq', defaults.get('freq'))
+            levels = conf[site].get('levels', [])  # Retrieve levels from configuration
+            weights = conf[site].get('weights', [])
             assert start is not None, logger.error(f"No min date (`start`) provided for observations at {site}, and no default value found.")
             assert end is not None, logger.error(f"No max date (`end`) provided for observations at {site}, and no default value found.")
             assert freq is not None, logger.error(f"No sampling frequency (`freq`) key provided for site {site}, and no default value found.")
@@ -92,6 +94,8 @@ class Observations(DataFrame):
             df.loc[:, 'alt'] = conf[site]['alt']
             df.loc[:, 'height'] = conf[site]['height']
             df.loc[:, 'code'] = conf[site].get('code', site) #Kristian april 2024: add levels and weights here preliminary
+            df.loc[:, 'levels'] = levels  # Assign levels to all rows in the DataFrame
+            df.loc[:, 'weights'] = weights  # Assign weights to all rows in the DataFrame
             interval = conf[site].get('range', defaults.get('range'))
             if interval is not None:
                 _, tmin, _, tmax = interval.split()

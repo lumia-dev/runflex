@@ -186,6 +186,8 @@ class Release(Namelist):
     LAT2: float = None
     LON2: float = None
     Z2: float = None
+    ZZ: FloatList = None
+    ZWEIGHT: FloatList = None
 
     def __post_init__(self):
         if self.IDATE2 is None:
