@@ -94,8 +94,17 @@ class Observations(DataFrame):
             df.loc[:, 'alt'] = conf[site]['alt']
             df.loc[:, 'height'] = conf[site]['height']
             df.loc[:, 'code'] = conf[site].get('code', site) #Kristian april 2024: add levels and weights here preliminary
-            df.loc[:, 'levels'] = levels  # Assign levels to all rows in the DataFrame
-            df.loc[:, 'weights'] = weights  # Assign weights to all rows in the DataFrame
+            num_rows = len(df)
+            if not levels:
+                levels = [[] for _ in range(num_rows)]
+            elif len(levels) != num_rows:
+                levels = [levels for _ in range(num_rows)]
+            if not weights:
+                weights = [[] for _ in range(num_rows)]
+            elif len(weights) != num_rows:
+                weights = [weights for _ in range(num_rows)]
+            df['levels'] = levels  # Assign levels to all rows in the DataFrame
+            df['weights'] = weights  # Assign weights to all rows in the DataFrame
             interval = conf[site].get('range', defaults.get('range'))
             if interval is not None:
                 _, tmin, _, tmax = interval.split()
