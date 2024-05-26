@@ -16,7 +16,7 @@ donkey :
     run : /data/users/Kristian/run
     src : ${runflex:src/flexpart10.4}
     extras : ${runflex:src/satflex} #use satflex
-    makefile : makefile.opensuse-tumbleweed.gfortran
+    makefile : makefile.fedora.gfortran
     output : /data/users/Kristian/output
     logfile : ${paths.run}/flexpart.out
     command : ${runflex:inputs/COMMAND}
@@ -59,8 +59,6 @@ observations :
       height : 115
       alt : 150
       #Kristian april 2024:
-      #Ak_levels : start by making som manual levels here
-      #AkPW : and weights here
       levels: [50, 100, 150]
       weights: [1, 1, 1]
     "*" :

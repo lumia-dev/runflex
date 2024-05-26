@@ -95,7 +95,8 @@ subroutine readreleases
   integer,allocatable, dimension (:) :: specnum_rel,specnum_rel2
   !the following two parameters added by Kristian april 2024:
   integer, parameter :: nlev_ak=3
-  real, dimension (nlev_ak) :: zz,zweight
+  real, dimension (nlev_ak) :: zz
+  real, allocatable :: zzpoint(:,:), zweight(:,:)  !Kristian May 2024
 
 
   !Kristian April 18 2024:dimension of nlev_ak is set to three, because we only have 3 level at the moment.
@@ -115,7 +116,7 @@ subroutine readreleases
        mass, &
        parts, &
        comment, &
-       zz, zweight
+       zz, zweight !kristian may 2024
 
   numpoint=0
 
@@ -447,7 +448,9 @@ subroutine readreleases
     ypoint2(numpoint)=lat2
     zpoint1(numpoint)=z1
     zpoint2(numpoint)=z2
-    zzpoint(numpoint, :)=zz/sum(zz)
+    !Kristian May 2024: Read ZZ values and store them in zzpoint
+    read(unitreleases, *) zzpoint(numpoint, :)
+    zzpoint(numpoint, :) = zzpoint(numpoint, :) / sum(zzpoint(numpoint, :))
     kindz(numpoint)=zkind
     do i=1,nspec
       xmass(numpoint,i)=mass(i)
@@ -483,6 +486,13 @@ subroutine readreleases
     if (old) call skplin(2,unitreleases)
     read(unitreleases,*,err=998) npart(numpoint)
     if (old) call skplin(2,unitreleases)
+
+! Read zz and zweight values
+    read(unitreleases, *, err=998) (zzpoint(numpoint, j), j=1, nlev_ak)  !Kristian 2024
+    if (old) call skplin(2, unitreleases)
+    read(unitreleases, *, err=998) (zweight(numpoint, j), j=1, nlev_ak)  !Kristian 2024
+    if (old) call skplin(2, unitreleases)
+
     do i=1,nspec
       read(unitreleases,*,err=998) xmass(numpoint,i)
       if (old) call skplin(2,unitreleases)

@@ -63,14 +63,17 @@ subroutine releaseparticles(itime)
     integer :: itime,numrel,i,j,k,n,ix,jy,ixp,jyp,ipart,minpart,ii
     integer :: indz,indzp,kz,ngrid
     integer :: nweeks,ndayofweek,nhour,jjjjmmdd,ihmmss,mm
+    integer :: cur_lev !Kristian May 2024
     real(kind=dp) :: juldate,julmonday,jul,jullocal,juldiff
     real,parameter :: eps=nxmax/3.e5,eps2=1.e-6
-
+    real, allocatable :: zzpoint(:,:), zweight(:,:)  !Kristian May 2024
+    integer, parameter :: max_levels = 3  ! Kristian: Adjust the size as needed
+    real :: weights(max_levels)           ! Kristian: Declare the weights array
     integer :: idummy = -7
     !save idummy,xmasssave
     !data idummy/-7/,xmasssave/maxpoint*0./
 
-
+    weights = 0.0
 
     ! Determine the actual date and time in Greenwich (i.e., UTC + correction for daylight savings time)
     !*****************************************************************************
@@ -154,7 +157,7 @@ subroutine releaseparticles(itime)
                 !Kristian April 2024: 
                 !these changes makes the loop consider the different release levels:
                 cur_lev=1
-                weights=zweights(i,:)
+                weights=zweight(i,:)
                 do ipart = minpart, config%maxpart          ! search for free storage space
                     
                     ! If a free storage space is found, attribute everything to this array element
