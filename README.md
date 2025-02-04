@@ -1,6 +1,6 @@
 # RUNFLEX
 
-Runflex is a python library to run FLEXPART on a HPC cluster
+Runflex is a python library to run FLEXPART on a HPC cluster. This version is modified to run FLEXPART 11.
 
 ### Content
 * the _runflex_ folder contains the runflex python library itself
