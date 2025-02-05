@@ -155,7 +155,7 @@ class Command(Namelist):
     SURF_ONLY: int = 0
     CBLFLAG: int = 0
     OHFIELDS_PATH: str = ''
-
+    NXSHIFT: int = 0
 
 @dataclass
 class Outgrid(Namelist):
@@ -257,12 +257,45 @@ class Species(Namelist):
     dquer : FormattedString('18.1e') = 0.0
     dsigma: FormattedString('18.1e') = 0.0
     dryvel: FormattedString('18.2f') = -9.99
-    ohcconst: FormattedString('18.2e') = -9.99
-    ohdconst: FormattedString('8.2f') = -9.9e-9
-    ohnconst: FormattedString('8.2f') = 2.0
+    cconst: FormattedString('18.2e') = -9.99
+    dconst: FormattedString('8.2f') = -9.9e-9
+    nconst: FormattedString('8.2f') = 2.0
     weightmolar: FormattedString('18.2f') = -999.9
 
 @dataclass
 class Ageclasses(Namelist):
     NAGECLASS: int = 1
     LAGE: int = 1728000
+
+@dataclass
+class Partoptions(Namelist):
+    LONGITUDE: bool = True
+    LONGITUDE_AVERAGE: bool = False
+    LATITUDE: bool = True
+    LATITUDE_AVERAGE: bool = False
+    HEIGHT: bool = True
+    HEIGHT_AVERAGE: bool = False
+    PV: bool = True
+    PV_AVERAGE: bool = False
+    QV: bool = True
+    QV_AVERAGE: bool = False
+    DENSITY: bool = True
+    DENSITY_AVERAGE: bool = False
+    TEMPERATURE: bool = True
+    TEMPERATURE_AVERAGE: bool = False
+    PRESSURE: bool = False
+    PRESSURE_AVERAGE: bool =  False
+    MIXINGHEIGHT: bool = True
+    MIXINGHEIGHT_AVERAGE: bool = False
+    TROPOPAUSE: bool = True
+    TROPOPAUSE_AVERAGE: bool = False
+    TOPOGRAPHY: bool = True
+    TOPOGRAPHY_AVERAGE: bool = False
+    MASS: bool = True
+    MASS_AVERAGE: bool = False
+    U: bool = False
+    U_AVERAGE: bool = False
+    V: bool = False
+    V_AVERAGE: bool =  False
+    W: bool = False
+    W_AVERAGE: bool = False
