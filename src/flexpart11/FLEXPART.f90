@@ -143,8 +143,6 @@ program flexpart
   write(*,*) 'CONGRATULATIONS: YOU HAVE SUCCESSFULLY COMPLETED A FLE&
        &XPART MODEL RUN!'
 
-open(unit=321, file=trim(path(2)(1:length(2)))//'/flexpart.ok', status='new')
-
 end program flexpart
 
 
@@ -182,8 +180,6 @@ subroutine read_options_and_initialise_flexpart
   use receptor_netcdf_mod,  only: read_satellite_info, receptorout_init
 #endif
   use receptor_mod,         only: alloc_receptor
-  use particles_mod,        only: init_particles
-  use settings,             only: config, read_config, init_calendar
 
   implicit none
 
@@ -194,8 +190,6 @@ subroutine read_options_and_initialise_flexpart
     stat,                 & ! Check if allocation was successful
     idummy=-320             ! dummy value used by the random routine
 
-  ! Read the rc-file (if present!):
-  call read_config('flexpart.rc')
 
   ! Read pathnames from file in working director that specify I/O directories
   !**************************************************************************
@@ -328,7 +322,6 @@ subroutine read_options_and_initialise_flexpart
   ! conditions, read in particle positions
   !*************************************************************************
   call initialise_particles
-  call init_particles(config%maxpart)
 
   ! Initialize variables for totals calculations
   !*********************************************
@@ -394,8 +387,6 @@ subroutine read_options_and_initialise_flexpart
   !************************************
   allocate(nan_count(numthreads), stat=stat)
   if (stat.ne.0) error stop "Could not allocate nan_count"
-  
-  call init_calendar
 
 end subroutine read_options_and_initialise_flexpart
 

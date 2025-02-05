@@ -1,7 +1,8 @@
 module particles_mod
 
     use par_mod, only : dp
-    use com_mod, only : lsynctime, nx, ny
+    use com_mod, only : lsynctime 
+    use windfields_mod, only : nx, ny
 
     implicit none
 
@@ -51,7 +52,7 @@ module particles_mod
 
 
     subroutine init_particles(npart)
-        use com_mod, only : ztra1
+        !use com_mod, only : ztra1
 
         integer, intent(in) :: npart
 
@@ -65,7 +66,7 @@ module particles_mod
 
 
     subroutine update(self, itime)
-        use com_mod, only : oro, pv, qv, rho, hmix, tropopause, tt, prs
+        use windfields_mod, only : oro, pv, qv, rho, hmix, tropopause, tt, prs
         class(type_particles) :: self
         integer, intent(in)   :: itime
 
@@ -86,7 +87,9 @@ module particles_mod
 
 
     subroutine update_variables(itime)
-        use com_mod, only : xlon0, dx, ylat0, dy, xtra1, ytra1, numpart, ztra1
+        use point_mod, only : xlon0, dx, ylat0, dy
+        use com_mod, only: numpart
+        use particle_mod, only : part
 
         integer, intent(in) :: itime
         integer             :: ipart
@@ -94,12 +97,16 @@ module particles_mod
         ! The following fields need to be calculated, when the particle is synchronized with the model
         do ipart = 1, numpart
             pp => particles(ipart)
+            pp%active = part(ipart)%alive
+            pp%free = part(ipart)%nstop
+            pp%release = part(ipart)%npoint
             if (.not. pp%free) then
-                pp%lon = xlon0 + xtra1(ipart) * dx
-                pp%lat = ylat0 + ytra1(ipart) * dy
-                pp%x = xtra1(ipart)
-                pp%y = ytra1(ipart)
-                pp%z = ztra1(ipart)
+                pp%lon = xlon0 + part(ipart)%xlon * dx
+                pp%lat = ylat0 + part(ipart)%ylat * dy
+                pp%x = part(ipart)%xlon
+                pp%y = part(ipart)%ylat
+                pp%z = part(ipart)%z
+                pp%t = itime + lsynctime
                 call pp%update(itime)
             end if
             nullify(pp)
@@ -137,7 +144,7 @@ module particles_mod
 
 
     function interp_lon_lat_alt(self, field) result (value)
-        use com_mod, only : height
+        use windfields_mod, only : height
 
         class(type_particles), intent(in)       :: self
         real, dimension(0:, 0:, :), intent(in)  :: field

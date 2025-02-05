@@ -1,0 +1,343 @@
+SHELL = /bin/bash
+################################################################################
+#  DESCRIPTION
+#    Makefile for FLEXPART.
+#
+#    also set environment variables CPATH and LD_LIBRARY_PATH to point to compiler libraries
+#
+#    Makefile was modified to produce unified executable for both ECMWF and GFS meteo data formats
+#    gributils were included to detect format of meteo data
+#
+#  USAGE
+#    Compile FLEXPART
+#      make [-j]
+#    Compile FLEXPART with eta coordinates
+#      make [-j] eta=yes
+#    Compile FLEXPART without NetCDF
+#      make [-j] eta=<yes/no> ncf=no
+#
+# 
+################################################################################
+
+## PROGRAMS
+# Unified executable names
+# The same executable is used for both ECMWF and GFS metdata
+
+# meter coordinates + NetCDF executable
+FLEXPART = FLEXPART
+
+# meter coordinates + Binary executable
+FLEXPART-BIN = FLEXPART_BIN
+
+# Eta coordinates netcdf executable
+FLEXPART-ETA = FLEXPART_ETA
+
+# Eta coordinates binary executable
+FLEXPART-ETA-BIN = FLEXPART_ETA_BIN
+
+export OMP_NESTED=FALSE
+
+ROOT_DIR = . #MD
+
+#F90 = /usr/bin/gfortran
+#
+# JET (INCLUDE/CPATH and LIBRARY_PATH)
+# VSC (CPATH and LIBRARY_PATH)
+# 
+ifndef CPATH
+$(error CPATH is not set)
+endif
+ifndef LIBRARY_PATH
+$(error LIBRARY_PATH is not set)
+endif
+# use the environmental variable $INCLUDE
+# split the paths separated by :
+INC = $(subst :, ,$(CPATH))
+# add a -I/path/to/include
+INC := $(INC:%=-I%)
+# use the environmental variable $LIBRARY_PATH
+LIBPATH := $(subst :, ,$(LIBRARY_PATH))
+LIBRPATH := $(LIBPATH:%=-Wl,-rpath=%)
+LIBPATH := $(LIBPATH:%=-L%)
+
+### Enable netCDF output?
+ifeq ($(ncf), no)
+	NCOPT = -UUSE_NCF
+else
+	NCOPT = -DUSE_NCF -lnetcdff
+endif
+
+### Enable eta coordinates?
+ifeq ($(eta), no)
+	ETAOPT = -UETA
+else
+	ETAOPT = -DETA
+endif
+
+## OPTIMIZATION LEVEL
+O_LEV = 3 # [0,1,2,3,g,s,fast]
+O_LEV_DBG = g # [0,g]
+# -fopenmp #-pg -fbacktrace -fcheck=all -fbounds-check #-fopenmp#-p -fbacktrace -fopenmp #-tau_options=-optCompInst -tau_makefile=/home/lucie/Codes/Tau/x86_64/lib/Makefile.tau-mpi-pdt-openmp-opari#-fdefault-real-8# -freal-8-real-4#-pg -fcheck=all
+#
+# Different CPU microarchitectures
+# check https://gcc.gnu.org/onlinedocs/gcc/x86-Options.html
+# using generic (AVX2)
+# using skylake (AVX512)
+# using native is the default, which will use whatever it can 
+# (defined by the machine where you are compiling it)
+#
+ifeq ($(arch), generic)
+	FUSER = -g -fopenmp -march=core-avx2
+else ifeq ($(arch), skylake)
+	FUSER = -g -fopenmp -march=skylake-avx512
+else
+	FUSER = -g -fopenmp -march=native -mtune=native
+endif
+
+# To compile in serial
+#FUSER = -g -fopenmp_stubs -march=skylake-avx512
+
+mpi: FUSER := $(FUSER) -Dusempi #-MM -MT -MD
+## LIBRARIES
+LIBS = -leccodes -leccodes_f90 -lm $(NCOPT) $(ETAOPT) #MD -ljasper
+
+FFLAGS   = $(INC) -O$(O_LEV) -m64 -cpp -mcmodel=large $(NCOPT) $(ETAOPT) $(FUSER)  #-convert little_endian -fpp -WB -check all
+
+DBGFLAGS = $(INC) -O$(O_LEV_DBG) -g3 -ggdb3 -cpp -m64 -mcmodel=large -fconvert=little-endian -frecord-marker=4 -fmessage-length=0 -flto=jobserver -O$(O_LEV_DBG) $(NCOPT) $(ETAOPT) -fbacktrace   -Wall  -fdump-core $(FUSER)  #  -ffpe-trap=invalid,overflow,denormal,underflow,zero  -Warray-bounds -fcheck=all
+
+LDFLAGS  = $(FFLAGS) $(LIBPATH) $(LIBRPATH) $(LIBS) 
+LDDEBUG  = $(DBGFLAGS) $(LIBPATH) $(LIBRPATH) $(LIBS)
+
+MODOBJS = \
+advance_mod.o 		binary_output_mod.o \
+cbl_mod.o 		cmapf_mod.o \
+com_mod.o 		conv_mod.o \
+class_gribfile_mod.o \
+date_mod.o 		drydepo_mod.o \
+erf_mod.o 		flux_mod.o \
+getfields_mod.o 	initialise_mod.o \
+interpol_mod.o 		mean_mod.o \
+outgrid_mod.o \
+output_mod.o 		par_mod.o \
+particle_mod.o 		pbl_profile_mod.o \
+plume_mod.o 		point_mod.o \
+random_mod.o 		readoptions_mod.o \
+restart_mod.o 		settling_mod.o \
+sort_mod.o \
+timemanager_mod.o 	turbulence_mod.o \
+txt_output_mod.o 	unc_mod.o \
+verttransform_mod.o 	wetdepo_mod.o \
+windfields_mod.o 	qvsat_mod.o \
+xmass_mod.o		receptor_mod.o 
+
+OBJECTS_NCF = \
+netcdf_output_mod.o	chemistry_mod.o \
+totals_mod.o		initdomain_mod.o \
+receptor_netcdf_mod.o	emissions_mod.o \
+
+OBJECTS_ETA = coord_ecmwf_mod.o 
+
+OBJECTS = \
+FLEXPART.o
+
+ifeq ($(ncf), no)
+	OBJECTS	:= $(OBJECTS)
+ifeq ($(eta), no)
+	FP := $(FLEXPART-BIN)
+else
+	FP := $(FLEXPART-ETA-BIN)
+	OBJECTS := $(OBJECTS) $(OBJECTS_ETA)
+endif
+else
+	OBJECTS := $(OBJECTS) $(OBJECTS_NCF)
+ifeq ($(eta), no)
+	FP := $(FLEXPART)
+else
+	FP := $(FLEXPART-ETA)
+	OBJECTS := $(OBJECTS) $(OBJECTS_ETA)
+endif
+endif
+
+$(info $(OBJECTS))
+
+%.o: %.mod
+
+# serial executable
+# serial: $(FLEXPART-SERIAL)
+# serial: FC := $(FC)
+
+# eta: $(FLEXPART-ETA)
+# eta: FC := $(FC)
+# eta: etadep := "yes"
+
+$(FP): $(MODOBJS) $(OBJECTS)
+	+$(FC) -o $@ $(MODOBJS) $(OBJECTS) $(LDFLAGS)
+# $(FLEXPART-ETA): $(MODOBJS) $(OBJECTS) $(OBJECTS_ETA)
+# 	+$(FC) -o $@ $(MODOBJS) $(OBJECTS) $(LDFLAGS)
+
+%.o: %.f90
+	+$(FC) -c $(FFLAGS) $<
+
+clean:
+	\rm -f *.o *.mod
+
+.PHONY: clean
+
+cleanall:
+	\rm -f *.o *.mod $(FLEXPART) $(FLEXPART-BIN) $(FLEXPART-ETA) $(FLEXPART-ETA-BIN)
+
+
+.SUFFIXES = $(SUFFIXES) .f90
+
+#ETA RECOMPILE
+ifeq ($(eta), no)
+	ifneq ("$(wildcard ./coord_ecmwf_mod.o)","")
+		etadep := "yes"
+	else
+		etadep := "no"
+	endif
+else
+	ifneq ("$(wildcard ./coord_ecmwf_mod.o)","")
+		etadep := "no"
+	else
+		etadep := "yes"
+	endif
+endif
+
+recompile:
+	@echo Why, $(etadep)
+
+#GIT
+GIT_VERSION := "$(shell git log --pretty=format:"%h %ad" -n 1)"
+file_git := gitversion.txt
+
+ifneq ("$(wildcard $(file_git))","")
+GIT_OLD := "$(shell cat ${file_git})"
+else
+GIT_OLD := ""
+endif
+
+gitversion:
+	@echo Added Gitversion: $(GIT_VERSION)
+	@echo Old Gitversion: $(GIT_OLD)
+
+	sed -i '0,/gitversion_tmp/s;gitversion_tmp.*;gitversion_tmp=$(GIT_VERSION);' FLEXPART.f90
+	@echo $(GIT_VERSION) > gitversion.txt
+
+## DEPENDENCIES
+
+#1) Independent modules: par_mod.o, com_mod.o, qvsat_mod.o class_gribfile_mod.o
+	
+#2) Modules that are only dependent on independent modules
+cmapf_mod.o: par_mod.o
+com_mod.o: par_mod.o
+date_mod.o: par_mod.o
+erf_mod.o: par_mod.o
+mean_mod.o: par_mod.o
+sort_mod.o: par_mod.o
+ifeq ($(etadep), "yes")
+particle_mod.o: recompile com_mod.o par_mod.o
+else
+particle_mod.o: com_mod.o par_mod.o
+endif
+point_mod.o: com_mod.o par_mod.o
+unc_mod.o: par_mod.o com_mod.o
+cbl_mod.o: com_mod.o par_mod.o random_mod.o
+pbl_profile_mod.o: par_mod.o qvsat_mod.o
+
+#3) 3rd level dependencies
+turbulence_mod.o: particle_mod.o cbl_mod.o qvsat_mod.o
+ifeq ($(etadep), "yes")
+windfields_mod.o: recompile cmapf_mod.o point_mod.o class_gribfile_mod.o date_mod.o qvsat_mod.o \
+	pbl_profile_mod.o
+else
+windfields_mod.o: cmapf_mod.o point_mod.o class_gribfile_mod.o date_mod.o qvsat_mod.o \
+	pbl_profile_mod.o
+endif
+#4) 4th level dependencies
+verttransform_mod.o: par_mod.o com_mod.o qvsat_mod.o windfields_mod.o
+settling_mod.o: windfields_mod.o
+interpol_mod.o: windfields_mod.o particle_mod.o turbulence_mod.o
+
+#5)
+ifneq ($(eta),no)
+coord_ecmwf_mod.o: interpol_mod.o
+endif
+drydepo_mod.o: unc_mod.o interpol_mod.o erf_mod.o
+
+#6)
+ifneq ($(eta),no)
+advance_mod.o: coord_ecmwf_mod.o settling_mod.o drydepo_mod.o turbulence_mod.o
+plume_mod.o: mean_mod.o coord_ecmwf_mod.o
+outgrid_mod.o: unc_mod.o coord_ecmwf_mod.o
+wetdepo_mod.o: coord_ecmwf_mod.o unc_mod.o
+else
+advance_mod.o: interpol_mod.o settling_mod.o drydepo_mod.o turbulence_mod.o
+plume_mod.o: mean_mod.o particle_mod.o windfields_mod.o
+outgrid_mod.o: unc_mod.o interpol_mod.o
+wetdepo_mod.o: interpol_mod.o unc_mod.o
+endif
+readoptions_mod.o: drydepo_mod.o xmass_mod.o
+
+#7)
+getfields_mod.o: wetdepo_mod.o verttransform_mod.o qvsat_mod.o
+flux_mod.o: outgrid_mod.o qvsat_mod.o
+txt_output_mod.o: outgrid_mod.o
+binary_output_mod.o: mean_mod.o outgrid_mod.o
+ifneq ($(ncf), no)
+receptor_mod.o: par_mod.o com_mod.o point_mod.o particle_mod.o date_mod.o \
+        windfields_mod.o receptor_netcdf_mod.o binary_output_mod.o
+else
+receptor_mod.o: par_mod.o com_mod.o point_mod.o particle_mod.o date_mod.o \
+        windfields_mod.o binary_output_mod.o
+endif 
+ifneq ($(ncf), no)
+netcdf_output_mod.o: mean_mod.o outgrid_mod.o readoptions_mod.o drydepo_mod.o
+totals_mod.o: par_mod.o com_mod.o netcdf_output_mod.o
+chemistry_mod.o: par_mod.o com_mod.o date_mod.o particle_mod.o \
+	point_mod.o windfields_mod.o totals_mod.o netcdf_output_mod.o
+initdomain_mod.o: par_mod.o com_mod.o point_mod.o random_mod.o outgrid_mod.o \
+	initialise_mod.o totals_mod.o date_mod.o windfields_mod.o netcdf_output_mod.o
+receptor_netcdf_mod.o: par_mod.o com_mod.o point_mod.o date_mod.o \
+	windfields_mod.o netcdf_output_mod.o 
+emissions_mod.o: par_mod.o com_mod.o point_mod.o particle_mod.o date_mod.o \
+	netcdf_output_mod.o totals_mod.o windfields_mod.o
+endif
+
+#8)
+conv_mod.o: flux_mod.o class_gribfile_mod.o qvsat_mod.o sort_mod.o
+ifeq ($(ncf), no)
+output_mod.o: binary_output_mod.o txt_output_mod.o
+ifneq ($(eta),no)
+restart_mod.o: coord_ecmwf_mod.o unc_mod.o outgrid_mod.o
+else
+restart_mod.o: interpol_mod.o unc_mod.o outgrid_mod.o
+endif
+else
+output_mod.o: netcdf_output_mod.o binary_output_mod.o txt_output_mod.o
+ifneq ($(eta),no)
+restart_mod.o: coord_ecmwf_mod.o unc_mod.o netcdf_output_mod.o
+else
+restart_mod.o: interpol_mod.o unc_mod.o netcdf_output_mod.o
+endif
+endif
+
+#9)
+initialise_mod.o: interpol_mod.o xmass_mod.o output_mod.o turbulence_mod.o
+
+#10)
+ifneq ($(ncf), no)
+timemanager_mod.o: advance_mod.o conv_mod.o plume_mod.o getfields_mod.o restart_mod.o \
+	initialise_mod.o chemistry_mod.o initdomain_mod.o receptor_mod.o \
+	emissions_mod.o totals_mod.o
+else
+timemanager_mod.o: advance_mod.o conv_mod.o plume_mod.o getfields_mod.o restart_mod.o \
+        initialise_mod.o receptor_mod.o
+endif
+
+#11)
+ifneq ($(GIT_VERSION),$(GIT_OLD))
+FLEXPART.o: timemanager_mod.o gitversion
+else
+FLEXPART.o: timemanager_mod.o
+endif
