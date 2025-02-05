@@ -34,7 +34,7 @@ class QueueManager:
         tasks = []
         for jobnum, rl in enumerate(dbfiles):
             tasks.append(JobInfo(
-                rundir=os.path.join(self.rcf.paths['run'], str(jobnum)),
+                rundir=os.path.join(self.rcf.host.paths['run'], str(jobnum)),
                 rcf=self.rcf,
                 releases=rl,
                 jobid=jobnum,

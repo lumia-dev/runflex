@@ -74,7 +74,7 @@ class Task:
         lenmax = self.rcf.releases.length
         tmin = tmin - Timedelta(days=lenmax)
 
-        command = Command.read(self.rcf.paths.command)
+        command = Command.read(self.rcf.host.paths.command)
         if 'command' in self.rcf:
             command.update(self.rcf.command)
 
@@ -103,7 +103,7 @@ class Task:
 
     @property
     def ageclasses(self) -> Ageclasses:
-        ageclasses = Ageclasses.read(self.rcf.paths.ageclasses)
+        ageclasses = Ageclasses.read(self.rcf.host.paths.ageclasses)
         if 'ageclasses' in self.rcf:
             ageclasses.update(self.rcf.ageclasses)
         if ageclasses.NAGECLASS > 1:
@@ -127,7 +127,7 @@ class Task:
 
     @property
     def flexpart(self) -> Flexpart:
-        return Flexpart(build=self.rcf.paths.build)
+        return Flexpart(build=self.rcf.host.paths.build)
 
     def setup_species(self) -> None:
         checkpath(os.path.join(self.rundir, 'SPECIES'))
@@ -143,7 +143,7 @@ class Task:
             if self.interactive:
                 logfile = sys.stdout
             meteo = Meteo(
-                path=self.rcf.paths.meteo,
+                path=self.rcf.host.paths.meteo,
                 archive=self.rcf.meteo.get('archive', None),
                 prefix=self.rcf.meteo.prefix,
                 tres=self.rcf.meteo.interv,
@@ -159,7 +159,7 @@ class Task:
         with open(os.path.join(self.rundir, 'pathnames'), 'w') as fid:
             fid.write(f'{self.rundir.absolute()}/\n')
             fid.write(f'{self.rundir.absolute()}/\n')
-            fid.write(f'{Path(self.rcf.paths.meteo).absolute()}/\n')
+            fid.write(f'{Path(self.rcf.host.paths.meteo).absolute()}/\n')
             fid.write(os.path.join(self.rundir.absolute(), 'AVAILABLE'))
 
     def setup_releases(self) -> None:

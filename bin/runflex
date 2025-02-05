@@ -17,7 +17,7 @@ dconf = runflex.read_conf(**vars(args))
 
 # Compile
 if args.compile :
-    comp = runflex.compile(dconf)
+    comp = runflex.compile(dconf.host)
 
 if args.footprints :
     tasks = runflex.calc_footprints(dconf)

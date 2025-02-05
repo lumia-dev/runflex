@@ -24,7 +24,7 @@ class FootprintClass(Protocol):
 
 def read_tgz(fname: str) -> DataFrame:
     with tarfile.open(fname, 'r:gz') as tar:
-        df = read_csv(tar.extractfile('observations.csv'), infer_datetime_format='%Y%m%d%H%M%S', index_col=0, parse_dates=['time'])
+        df = read_csv(tar.extractfile('observations.csv'), infer_datetime_format='%Y%m%d%H%M%S', index_col=0, parse_dates=['time', 'time_start', 'time_end'])
     return df
 
 

@@ -322,7 +322,7 @@ def postprocess_task(task) -> None:
             # Iterate over the lumia footprint files (i.e. destination)
             for file in releases.drop_duplicates(subset=['filename']).loc[:, ['filename', 'time']].itertuples():
                 origin = Timestamp(file.time.strftime('%Y-%m'))
-                with LumiaFile(os.path.join(checkpath(task.rcf.paths.output), file.filename), origin=origin, mode='a') as lum:
+                with LumiaFile(os.path.join(checkpath(task.rcf.host.paths.output), file.filename), origin=origin, mode='a') as lum:
                     for release in releases.loc[releases.filename == file.filename].obsid:
                         lum.add(gridfile.get(release), bg.groups.get(release, None))
 

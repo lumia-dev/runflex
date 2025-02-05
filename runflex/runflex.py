@@ -132,11 +132,11 @@ def handle_missing(obs, path: Path, display: bool = False) -> List[bool]:
 def calc_footprints(conf: DictConfig) -> Union[Observations, QueueManager]:
     # Load the observations:
     obs = load_obs(conf)
-    outpth = conf.paths.output
+    outpth = conf.host.paths.output
 
     # Cleanup can remove anything that is in paths.run, so disabled by default
     if conf.run.cleanup:
-        shutil.rmtree(conf.paths.run, ignore_errors=True)
+        shutil.rmtree(conf.host.paths.run, ignore_errors=True)
 
     # If it's a continuation (default True), check which footprints already exist:
     if conf.run.recompute:
