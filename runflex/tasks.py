@@ -15,7 +15,7 @@ from loguru import logger
 from dataclasses import dataclass
 from typing import Union
 from pathlib import Path
-from runflex.files import Command, Outgrid, Species, Ageclasses
+from runflex.files import Command, Outgrid, Species, Ageclasses, Partoptions
 from runflex.utilities import getfile
 from multiprocessing import RLock
 
@@ -137,6 +137,10 @@ class Task:
         elif isinstance(spec, DictConfig):
             Species(**self.rcf.releases.species).write(self.rundir / 'SPECIES' / f'SPECIES_999', name='SPECIES_PARAMS', prefix='P')
 
+    @property
+    def partoptions(self) -> Partoptions:
+        return Partoptions()
+
     def setup_meteo(self) -> None:
         with meteo_lock:
             logfile = self.rcf.meteo.get('logfile', sys.stdout)
@@ -201,6 +205,9 @@ class Task:
 
         # SPECIES
         self.setup_species()
+
+        # PARTOPTIONS
+        self.partoptions.write(os.path.join(self.rundir, 'PARTOPTIONS'), name='PARTOPTIONS')
 
         # OUTGRID
         self.outgrid.write(os.path.join(self.rundir, 'OUTGRID'), name='OUTGRID')
