@@ -27,6 +27,25 @@ def read_tgz(fname: str) -> DataFrame:
         df = read_csv(tar.extractfile('observations.csv'), infer_datetime_format='%Y%m%d%H%M%S', index_col=0, parse_dates=['time', 'time_start', 'time_end'])
     return df
 
+def read_tgz(fname: str) -> DataFrame:
+    with tarfile.open(fname, 'r:gz') as tar:
+        f = tar.extractfile('observations.csv')
+        try:
+            df = read_csv(
+                f,
+                infer_datetime_format='%Y%m%d%H%M%S',
+                index_col=0,
+                parse_dates=['time', 'time_start', 'time_end'],
+            )
+        except TypeError:
+            # pandas >= 2.0: infer_datetime_format is no longer accepted
+            f = tar.extractfile('observations.csv')  # re-open file handle
+            df = read_csv(
+                f,
+                index_col=0,
+                parse_dates=['time', 'time_start', 'time_end'],
+            )
+    return df
 
 class Observations(DataFrame):
 
